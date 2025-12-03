@@ -1,0 +1,342 @@
+/* ===================================================
+   MAPA Y TOOLTIP
+=================================================== */
+
+/* Tooltip que aparece al pasar el mouse sobre los municipios */
+.tooltip {
+  position: absolute;
+  background: #ffffff;
+  color: #333333;
+  border: 1px solid #cccccc;
+  padding: 6px 10px;
+  border-radius: 4px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  font-size: 13px;
+  pointer-events: none;
+  z-index: 1000;
+}
+
+/* ===================================================
+   MAPAS ENTIDADES RESPONSIVOS
+=================================================== */
+
+.mapa-wrapper {
+  position: relative;
+  width: 100%;
+  padding-top: 62.5%; /* 960 / 600 = 1.6 -> 62.5% */
+  overflow: hidden;
+}
+
+.mapa-wrapper svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Botones de zoom - Escritorio */
+.zoom-controles {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: flex;
+  gap: 8px;
+  z-index: 10;
+}
+
+/* Botones de zoom - Móvil */
+@media (max-width: 768px) {
+  .zoom-controles {
+    position: absolute;
+    top: auto;
+    bottom: 5px;
+    right: 50%;
+    transform: translateX(50%);
+    flex-direction: row;
+    justify-content: center;
+    background-color: rgba(255, 255, 255, 0.95);
+    padding: 5px;
+    border-radius: 10px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+  .zoom-controles button {
+    width: 30px;
+    height: 30px;
+    font-size: 15px;
+    padding: 0;
+    border-radius: 6px;
+  }
+}
+
+/* ===================================================
+   TABLAS DE DATOS
+=================================================== */
+
+.tabla-scroll {
+  width: 100%;
+  overflow-x: auto;
+  margin-bottom: 1rem;
+}
+
+.tabla-scroll::-webkit-scrollbar {
+  height: 8px;
+}
+.tabla-scroll::-webkit-scrollbar-thumb {
+  background-color: #ccc;
+  border-radius: 4px;
+}
+
+.tabla-scroll table {
+  min-width: 300px; /* Ajustable según el número de columnas */
+}
+
+.tabla-datos {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: 'Noto Sans', sans-serif;
+  table-layout: auto;
+}
+
+.tabla-datos th {
+  padding: 10px;
+  border: 1px solid #ddd;
+  font-weight: bold;
+}
+
+.tabla-datos td {
+  padding: 5px;
+  border: 1px solid #ddd;
+}
+
+/* Encabezados en varias líneas y responsivos */
+.tabla-datos th {
+  white-space: normal;
+  word-wrap: break-word;
+  text-align: center;
+}
+
+.tabla-datos thead {
+  background-color: var(--color-Verde-Abismo);
+  color: white;
+  font-weight: bold;
+}
+
+.tabla-datos td.municipio {
+  text-align: left;
+  font-weight: 500;
+}
+
+.tabla-datos td.numero {
+  text-align: right;
+}
+
+/* Estilo para la fila de totales */
+.fila-total td {
+  background-color: var(--color-Verde-Abismo);
+  color: white;
+  font-weight: 700 !important;
+  font-size: 1.05em;
+}
+
+/* ===================================================
+   OPTIMIZACIÓN DE TABLAS PARA MÓVILES
+=================================================== */
+
+@media screen and (max-width: 480px) {
+  .tabla-datos th,
+  .tabla-datos td {
+    padding: 6px 4px;
+    font-size: 13px;
+  }
+
+  .tabla-scroll table {
+    min-width: unset; /* Permite adaptar mejor en pantallas pequeñas */
+  }
+}
+
+/* ===================================================
+   PREVENCIÓN DE DESBORDAMIENTO HORIZONTAL
+=================================================== */
+
+body {
+  overflow-x: hidden;
+}
+
+main {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+/* ===================================================
+   FLECHAS DE ORDEN EN ENCABEZADOS
+=================================================== */
+
+.flecha-orden {
+  margin-right: 2px;
+  display: inline-block;
+  width: 1em;
+  text-align: center;
+}
+
+
+/* ===================================================
+MARCADORES
+=================================================== */
+/* ----- Layout: etiqueta arriba, control abajo (por defecto) ----- */
+.mc-row{
+  display: grid;
+  grid-template-columns: 1fr;   /* una sola columna */
+  row-gap: 6px;                 /* espacio entre etiqueta y control */
+  margin: 8px 0 4px 0;
+}
+.mc-label{
+  display:block;
+  font-weight:700;
+  font-family:'Noto Sans', sans-serif;
+  /* sin min-width: apilado limpio */
+}
+
+/* ----- Caja que imita un <select> ----- */
+.mc-field{
+  position:relative;
+  display:block;                /* ocupa todo el ancho de la fila */
+  width:100%;
+}
+.mc-trigger{
+  width:100%;
+  min-height:44px;              /* tap target cómodo */
+  padding:6px 28px 6px 8px;
+  border:1px solid #bdbdbd;
+  border-radius:4px;
+  background:#fff;
+  font-family:'Noto Sans', sans-serif;
+  font-size:14px;
+  text-align:left;
+  cursor:pointer;
+  position:relative;
+}
+.mc-trigger::after{
+  content:"▾";
+  position:absolute;
+  right:10px;
+  top:50%;
+  transform:translateY(-50%);
+  pointer-events:none;
+  opacity:.6;
+}
+.mc-trigger.is-placeholder{ color:#666; }
+
+/* ----- Dropdown ----- */
+.mc-menu{
+  display:none;
+  position:absolute;
+  z-index:999;                        /* sobre mapa/leyenda */
+  top:calc(100% + 4px);               /* siempre debajo del trigger */
+  left:0;
+  min-width:100%;                     /* mismo ancho que el trigger */
+  max-width:min(92vw,420px);          /* evita desbordes en móvil */
+  max-height:260px;
+  overflow:auto;
+  border:1px solid #bdbdbd;
+  border-radius:6px;
+  background:#fff;
+  box-shadow:0 8px 18px rgba(0,0,0,.08);
+  padding:6px;
+}
+.mc-menu.open{ display:block; }
+
+.mc-option{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:6px 8px;
+  border-radius:4px;
+  cursor:pointer;
+  font-family:'Noto Sans', sans-serif;
+  font-size:14px;
+}
+.mc-option:hover{ background:#f3f4f6; }
+.mc-check{ cursor:pointer; }
+
+/* Ajuste fino opcional */
+.mc2-control{ height:20px; }
+
+/* ===================================================
+INDICADOR (mismos estilos que Marcadores)
+=================================================== */
+/* ----- Layout: etiqueta arriba, control abajo (por defecto) ----- */
+.ic-row{
+  display: grid;
+  grid-template-columns: 1fr;   /* una sola columna */
+  row-gap: 6px;
+  margin: 8px 0 4px 0;
+}
+.ic-label{
+  display:block;
+  font-weight:700;
+  font-family:'Noto Sans', sans-serif;
+}
+
+.ic-select{
+  box-sizing:border-box;
+  width:100%;
+  min-height:44px;              /* tap target cómodo */
+  padding:6px 28px 6px 8px;
+  border:1px solid #bdbdbd;
+  border-radius:4px;
+  background:#fff;
+  font-family:'Noto Sans', sans-serif;
+  font-size:14px;
+  line-height:1.4;
+  appearance:none;
+  -webkit-appearance:none;
+  -moz-appearance:none;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'><path d='M5 7l5 5 5-5' fill='none' stroke='%23666' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+  background-repeat:no-repeat;
+  background-position:right 10px center;
+  background-size:16px;
+}
+
+/* Foco accesible para ambos controles */
+.ic-select:focus,
+.mc-trigger:focus{
+  outline:3px solid rgba(0,112,243,.35);
+  outline-offset:2px;
+}
+
+/* ===================================================
+RESPONSIVE: PC junta Indicador y Marcadores en una fila
+=================================================== */
+@media (min-width: 992px){
+  /* La barra de controles: dos columnas (grupo Indicador | grupo Marcadores) */
+  #barra-controles{
+    display: grid;
+    grid-template-columns: 1fr 1fr;   /* dos grupos */
+    column-gap: 32px;
+    align-items: center;
+  }
+
+  /* Cada grupo es etiqueta + control en la misma línea */
+  .ic-row,
+  .mc-row{
+    display: grid !important;
+    grid-template-columns: 90px minmax(240px, 1fr); /* etiqueta más estrecha */
+    column-gap: 8px;
+    row-gap: 0;
+    margin: 0;
+    align-items: center;
+  }
+
+  .ic-label,
+  .mc-label{
+    justify-self: start;              /* etiqueta alineada a la izquierda */
+    text-align: left;
+    margin: 0;
+  }
+
+  .ic-select{ width:100%; }
+  .mc-field{ width:100%; }
+  .mc-trigger{ width:100%; }
+}

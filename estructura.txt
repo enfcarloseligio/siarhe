@@ -10,8 +10,44 @@ Listado de rutas de carpetas
 El número de serie del volumen es 6076-4BBE
 D:\USERS\JUAN.DELACRUZ\DOCUMENTS\PROYECTOS\SIARHE\ASSETS
 +---css
+¦       mapas.css
+¦       styles.css
+¦       
 +---data
 ¦   +---entidades
+¦   ¦       aguascalientes.csv
+¦   ¦       baja-california-sur.csv
+¦   ¦       baja-california.csv
+¦   ¦       campeche.csv
+¦   ¦       chiapas.csv
+¦   ¦       chihuahua.csv
+¦   ¦       ciudad-de-mexico.csv
+¦   ¦       coahuila.csv
+¦   ¦       colima.csv
+¦   ¦       durango.csv
+¦   ¦       estado-de-mexico.csv
+¦   ¦       guanajuato.csv
+¦   ¦       guerrero.csv
+¦   ¦       hidalgo.csv
+¦   ¦       jalisco.csv
+¦   ¦       michoacan.csv
+¦   ¦       morelos.csv
+¦   ¦       nayarit.csv
+¦   ¦       nuevo-leon.csv
+¦   ¦       oaxaca.csv
+¦   ¦       puebla.csv
+¦   ¦       queretaro.csv
+¦   ¦       quintana-roo.csv
+¦   ¦       san-luis-potosi.csv
+¦   ¦       sinaloa.csv
+¦   ¦       sonora.csv
+¦   ¦       tabasco.csv
+¦   ¦       tamaulipas.csv
+¦   ¦       tlaxcala.csv
+¦   ¦       veracruz.csv
+¦   ¦       yucatan.csv
+¦   ¦       zacatecas.csv
+¦   ¦       
 ¦   +---maps
 ¦   ¦       aguascalientes.geojson
 ¦   ¦       baja-california-sur.geojson
@@ -48,10 +84,27 @@ D:\USERS\JUAN.DELACRUZ\DOCUMENTS\PROYECTOS\SIARHE\ASSETS
 ¦   ¦       zacatecas.geojson
 ¦   ¦       
 ¦   +---nacional
+¦           republica-mexicana.csv
+¦           
 +---js
     +---componentes
     +---maps
+    ¦       republica-mexicana.js
+    ¦       
     +---utils
+            cargar-indicadores.js
+            code.js
+            config-mapa.js
+            enlaces.js
+            marcadores.config.js
+            marcadores.js
+            metricas.js
+            normalizacion.js
+            tabla-municipios.js
+            tablas.js
+            tooltip.js
+            window.indicadoresSIARHE.js
+            
 
 ================================
  includes
@@ -61,6 +114,7 @@ El número de serie del volumen es 6076-4BBE
 D:\USERS\JUAN.DELACRUZ\DOCUMENTS\PROYECTOS\SIARHE\INCLUDES
     admin-pages.php
     analytics-api.php
+    assets.php
     core.php
     db-schema.php
     etl-agg.php
@@ -69,3 +123,12 @@ D:\USERS\JUAN.DELACRUZ\DOCUMENTS\PROYECTOS\SIARHE\INCLUDES
     
 No existe ninguna subcarpeta 
 
+
+================================
+ raw
+================================
+Listado de rutas de carpetas
+El número de serie del volumen es 6076-4BBE
+D:\USERS\JUAN.DELACRUZ\DOCUMENTS\PROYECTOS\SIARHE\RAW
++---formaciones
++---pivotes

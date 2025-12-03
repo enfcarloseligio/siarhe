@@ -18,6 +18,7 @@ define( 'SIARHE_URL',  plugin_dir_url( __FILE__ ) );
 require_once SIARHE_PATH . 'includes/core.php';
 require_once SIARHE_PATH . 'includes/db-schema.php';
 require_once SIARHE_PATH . 'includes/admin-pages.php';
+require_once SIARHE_PATH . 'includes/assets.php';
 require_once SIARHE_PATH . 'includes/maps-shortcodes.php';
 require_once SIARHE_PATH . 'includes/etl-import.php';
 require_once SIARHE_PATH . 'includes/etl-agg.php';
