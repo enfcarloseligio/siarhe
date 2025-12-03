@@ -1,0 +1,71 @@
+estructura.bat
+estructura.txt
+readme.txt
+siarhe.php
+
+================================
+ assets
+================================
+Listado de rutas de carpetas
+El número de serie del volumen es 6076-4BBE
+D:\USERS\JUAN.DELACRUZ\DOCUMENTS\PROYECTOS\SIARHE\ASSETS
++---css
++---data
+¦   +---entidades
+¦   +---maps
+¦   ¦       aguascalientes.geojson
+¦   ¦       baja-california-sur.geojson
+¦   ¦       baja-california.geojson
+¦   ¦       campeche.geojson
+¦   ¦       chiapas.geojson
+¦   ¦       chihuahua.geojson
+¦   ¦       ciudad-de-mexico.geojson
+¦   ¦       coahuila.geojson
+¦   ¦       colima.geojson
+¦   ¦       durango.geojson
+¦   ¦       estado-de-mexico.geojson
+¦   ¦       guanajuato.geojson
+¦   ¦       guerrero.geojson
+¦   ¦       hidalgo.geojson
+¦   ¦       jalisco.geojson
+¦   ¦       michoacan.geojson
+¦   ¦       morelos.geojson
+¦   ¦       nayarit.geojson
+¦   ¦       nuevo-leon.geojson
+¦   ¦       oaxaca.geojson
+¦   ¦       puebla.geojson
+¦   ¦       queretaro.geojson
+¦   ¦       quintana-roo.geojson
+¦   ¦       republica-mexicana.geojson
+¦   ¦       san-luis-potosi.geojson
+¦   ¦       sinaloa.geojson
+¦   ¦       sonora.geojson
+¦   ¦       tabasco.geojson
+¦   ¦       tamaulipas.geojson
+¦   ¦       tlaxcala.geojson
+¦   ¦       veracruz.geojson
+¦   ¦       yucatan.geojson
+¦   ¦       zacatecas.geojson
+¦   ¦       
+¦   +---nacional
++---js
+    +---componentes
+    +---maps
+    +---utils
+
+================================
+ includes
+================================
+Listado de rutas de carpetas
+El número de serie del volumen es 6076-4BBE
+D:\USERS\JUAN.DELACRUZ\DOCUMENTS\PROYECTOS\SIARHE\INCLUDES
+    admin-pages.php
+    analytics-api.php
+    core.php
+    db-schema.php
+    etl-agg.php
+    etl-import.php
+    maps-shortcodes.php
+    
+No existe ninguna subcarpeta 
+
