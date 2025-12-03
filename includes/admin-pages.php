@@ -1,15 +1,14 @@
 <?php
-// includes/admin-page-config.php
-// Pantalla de Configuración del plugin SIARHE
-// Tabs: Páginas | Estilos
-// Incluye sección de “Asignación por defecto” + futura tabla editable.
+/**
+ * Páginas de administración del plugin SIARHE.
+ */
 
-if (!defined('ABSPATH')) {
+if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
 /**
- * Catálogo de entidades federativas (slug => nombre)
+ * Catálogo de entidades federativas (slug => nombre).
  */
 function siarhe_get_catalogo_entidades() {
     return [
@@ -48,69 +47,200 @@ function siarhe_get_catalogo_entidades() {
     ];
 }
 
-
 /**
- * Registrar settings (pestaña de "Páginas")
+ * Registrar settings usados en la pestaña "Páginas".
  */
 function siarhe_register_settings() {
 
-    register_setting('siarhe_paginas', 'siarhe_page_mapa_nacional', [
+    register_setting( 'siarhe_paginas', 'siarhe_page_mapa_nacional', [
         'type'              => 'integer',
         'sanitize_callback' => 'absint',
-        'default'           => 0
-    ]);
+        'default'           => 0,
+    ] );
 
-    register_setting('siarhe_paginas', 'siarhe_page_clinicas_cateter', [
+    register_setting( 'siarhe_paginas', 'siarhe_page_clinicas_cateter', [
         'type'              => 'integer',
         'sanitize_callback' => 'absint',
-        'default'           => 0
-    ]);
+        'default'           => 0,
+    ] );
 
-    register_setting('siarhe_paginas', 'siarhe_page_clinicas_heridas', [
+    register_setting( 'siarhe_paginas', 'siarhe_page_clinicas_heridas', [
         'type'              => 'integer',
         'sanitize_callback' => 'absint',
-        'default'           => 0
-    ]);
-
-    // *** FUTURO ***
-    // No registramos aún “siarhe_entidad_pages” editable porque
-    // el mapeo por defecto está basado en patrones.
+        'default'           => 0,
+    ] );
 }
-add_action('admin_init', 'siarhe_register_settings');
-
+add_action( 'admin_init', 'siarhe_register_settings' );
 
 /**
- * Página principal del menú Configuración
+ * Registrar menú principal y submenús de SIARHE.
  */
-function siarhe_render_config_page() {
+function siarhe_register_admin_menu() {
+    // Menú principal
+    add_menu_page(
+        'SIARHE',
+        'SIARHE',
+        'manage_options',
+        'siarhe_dashboard',
+        'siarhe_admin_dashboard_page',
+        'dashicons-chart-area',
+        25
+    );
 
-    $active_tab = isset($_GET['tab']) ? sanitize_key($_GET['tab']) : 'paginas';
-    if (!in_array($active_tab, ['paginas', 'estilos'], true)) {
+    // Dashboard
+    add_submenu_page(
+        'siarhe_dashboard',
+        'Dashboard SIARHE',
+        'Dashboard',
+        'manage_options',
+        'siarhe_dashboard',
+        'siarhe_admin_dashboard_page'
+    );
+
+    // Shortcodes
+    add_submenu_page(
+        'siarhe_dashboard',
+        'Shortcodes SIARHE',
+        'Shortcodes',
+        'manage_options',
+        'siarhe_shortcodes',
+        'siarhe_admin_shortcodes_page'
+    );
+
+    // Configuración
+    add_submenu_page(
+        'siarhe_dashboard',
+        'Configuración SIARHE',
+        'Configuración',
+        'manage_options',
+        'siarhe_settings',
+        'siarhe_admin_settings_page'
+    );
+}
+add_action( 'admin_menu', 'siarhe_register_admin_menu' );
+
+/**
+ * Página: Dashboard.
+ */
+function siarhe_admin_dashboard_page() {
+    ?>
+    <div class="wrap">
+        <h1>Dashboard SIARHE</h1>
+
+        <p>
+            Este dashboard mostrará información general del sistema SIARHE dentro de WordPress:
+            estado de las importaciones, último corte procesado, número de entidades con página
+            asignada, etc.
+        </p>
+
+        <p>
+            <strong>Año de corte activo para mapas:</strong>
+            <?php echo esc_html( SIARHE_ACTIVE_YEAR ); ?>
+        </p>
+
+        <ul>
+            <li>➤ Revisa los shortcodes disponibles en el submenú <strong>Shortcodes</strong>.</li>
+            <li>➤ Configura las páginas por entidad y mapas especiales en <strong>Configuración</strong>.</li>
+        </ul>
+
+        <p style="margin-top:1em;color:#777;">
+            (Por ahora es solo un panel informativo. Más adelante aquí podremos mostrar
+            métricas agregadas y gráficas rápidas.)
+        </p>
+    </div>
+    <?php
+}
+
+/**
+ * Página: Shortcodes.
+ */
+function siarhe_admin_shortcodes_page() {
+    ?>
+    <div class="wrap">
+        <h1>Shortcodes SIARHE</h1>
+
+        <p>
+            El parámetro <code>anio</code> se utiliza actualmente solo para el texto visible
+            (títulos, etiquetas de año). Los datos provienen siempre del corte activo
+            preprocesado. En futuras versiones se podrán habilitar consultas históricas.
+        </p>
+
+        <p>
+            <strong>Año de corte activo para mapas:</strong>
+            <?php echo esc_html( SIARHE_ACTIVE_YEAR ); ?>
+        </p>
+
+        <h2>Shortcodes disponibles (versión mínima)</h2>
+
+        <table class="widefat striped">
+            <thead>
+                <tr>
+                    <th>Shortcode</th>
+                    <th>Descripción</th>
+                    <th>Ejemplo</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>[siarhe_entidad slug="aguascalientes" anio="2025"]</code></td>
+                    <td>Mapa + tabla de una entidad (estructura conjunta; por ahora placeholder).</td>
+                    <td><code>[siarhe_entidad slug="aguascalientes" anio="<?php echo esc_html( SIARHE_ACTIVE_YEAR ); ?>"]</code></td>
+                </tr>
+                <tr>
+                    <td><code>[siarhe_entidad_mapa slug="aguascalientes" anio="2025"]</code></td>
+                    <td>Solo mapa interactivo de la entidad (placeholder).</td>
+                    <td><code>[siarhe_entidad_mapa slug="chiapas" anio="<?php echo esc_html( SIARHE_ACTIVE_YEAR ); ?>"]</code></td>
+                </tr>
+                <tr>
+                    <td><code>[siarhe_entidad_tabla slug="aguascalientes" anio="2025"]</code></td>
+                    <td>Solo tabla municipal con tasas (placeholder).</td>
+                    <td><code>[siarhe_entidad_tabla slug="yucatan" anio="<?php echo esc_html( SIARHE_ACTIVE_YEAR ); ?>"]</code></td>
+                </tr>
+                <tr>
+                    <td><code>[siarhe_mapa_nacional anio="2025"]</code></td>
+                    <td>Mapa nacional por entidad federativa.</td>
+                    <td><code>[siarhe_mapa_nacional anio="<?php echo esc_html( SIARHE_ACTIVE_YEAR ); ?>"]</code></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <p>Inserta estos shortcodes en cualquier página o entrada utilizando el editor de bloques o Elementor.</p>
+    </div>
+    <?php
+}
+
+/**
+ * Página: Configuración (con tabs).
+ */
+function siarhe_admin_settings_page() {
+
+    $active_tab = isset( $_GET['tab'] ) ? sanitize_key( $_GET['tab'] ) : 'paginas';
+    if ( ! in_array( $active_tab, [ 'paginas', 'estilos' ], true ) ) {
         $active_tab = 'paginas';
     }
     ?>
     <div class="wrap">
-        <h1>SIARHE – Configuración</h1>
+        <h1>Configuración SIARHE</h1>
 
         <p>
             Desde esta sección puedes configurar las páginas que se utilizarán para mostrar los
-            diferentes mapas (nacional, clínicas especiales, entidades estatales), así como
-            opciones futuras de estilo.
+            diferentes mapas (nacional, clínicas especiales, entidades estatales) y, más adelante,
+            opciones de estilo.
         </p>
 
         <h2 class="nav-tab-wrapper">
-            <a href="<?php echo admin_url('admin.php?page=siarhe-config&tab=paginas'); ?>"
+            <a href="<?php echo esc_url( admin_url( 'admin.php?page=siarhe_settings&tab=paginas' ) ); ?>"
                class="nav-tab <?php echo $active_tab === 'paginas' ? 'nav-tab-active' : ''; ?>">
                 Páginas
             </a>
-            <a href="<?php echo admin_url('admin.php?page=siarhe-config&tab=estilos'); ?>"
+            <a href="<?php echo esc_url( admin_url( 'admin.php?page=siarhe_settings&tab=estilos' ) ); ?>"
                class="nav-tab <?php echo $active_tab === 'estilos' ? 'nav-tab-active' : ''; ?>">
                 Estilos
             </a>
         </h2>
 
         <?php
-        if ($active_tab === 'paginas') {
+        if ( $active_tab === 'paginas' ) {
             siarhe_render_config_tab_paginas();
         } else {
             siarhe_render_config_tab_estilos();
@@ -120,22 +250,18 @@ function siarhe_render_config_page() {
     <?php
 }
 
-
 /**
  * TAB: Páginas
  */
 function siarhe_render_config_tab_paginas() {
 
-    $catalogo = siarhe_get_catalogo_entidades();
-    $pages = get_pages();
-
-    $page_nacional = (int) get_option('siarhe_page_mapa_nacional', 0);
-    $page_cateter  = (int) get_option('siarhe_page_clinicas_cateter', 0);
-    $page_heridas  = (int) get_option('siarhe_page_clinicas_heridas', 0);
+    $catalogo     = siarhe_get_catalogo_entidades();
+    $page_nacional = (int) get_option( 'siarhe_page_mapa_nacional', 0 );
+    $page_cateter  = (int) get_option( 'siarhe_page_clinicas_cateter', 0 );
+    $page_heridas  = (int) get_option( 'siarhe_page_clinicas_heridas', 0 );
     ?>
-
     <form method="post" action="options.php">
-        <?php settings_fields('siarhe_paginas'); ?>
+        <?php settings_fields( 'siarhe_paginas' ); ?>
 
         <h2>Asignación de páginas especiales</h2>
 
@@ -144,13 +270,13 @@ function siarhe_render_config_tab_paginas() {
                 <th><label for="siarhe_page_mapa_nacional">Página del mapa nacional</label></th>
                 <td>
                     <?php
-                    wp_dropdown_pages([
+                    wp_dropdown_pages( [
                         'name'              => 'siarhe_page_mapa_nacional',
                         'id'                => 'siarhe_page_mapa_nacional',
                         'show_option_none'  => '— Seleccionar —',
                         'option_none_value' => '0',
                         'selected'          => $page_nacional,
-                    ]);
+                    ] );
                     ?>
                     <p class="description">
                         También será utilizada por el botón “Home” en los mapas estatales.
@@ -162,13 +288,13 @@ function siarhe_render_config_tab_paginas() {
                 <th><label for="siarhe_page_clinicas_cateter">Clínicas de catéteres</label></th>
                 <td>
                     <?php
-                    wp_dropdown_pages([
+                    wp_dropdown_pages( [
                         'name'              => 'siarhe_page_clinicas_cateter',
                         'id'                => 'siarhe_page_clinicas_cateter',
                         'show_option_none'  => '— Seleccionar —',
                         'option_none_value' => '0',
                         'selected'          => $page_cateter,
-                    ]);
+                    ] );
                     ?>
                 </td>
             </tr>
@@ -177,19 +303,19 @@ function siarhe_render_config_tab_paginas() {
                 <th><label for="siarhe_page_clinicas_heridas">Clínicas de heridas</label></th>
                 <td>
                     <?php
-                    wp_dropdown_pages([
+                    wp_dropdown_pages( [
                         'name'              => 'siarhe_page_clinicas_heridas',
                         'id'                => 'siarhe_page_clinicas_heridas',
                         'show_option_none'  => '— Seleccionar —',
                         'option_none_value' => '0',
                         'selected'          => $page_heridas,
-                    ]);
+                    ] );
                     ?>
                 </td>
             </tr>
         </table>
 
-        <?php submit_button('Guardar configuración'); ?>
+        <?php submit_button( 'Guardar configuración' ); ?>
 
         <hr>
 
@@ -221,13 +347,11 @@ Ejemplo: /siarhe-entidad-aguascalientes
                 </tr>
             </thead>
             <tbody>
-            <?php foreach ($catalogo as $slug => $nombre): ?>
+            <?php foreach ( $catalogo as $slug => $nombre ) : ?>
                 <tr>
-                    <td><?php echo esc_html($nombre); ?></td>
-                    <td><code><?php echo esc_html($slug); ?></code></td>
-                    <td>
-                        <code><?php echo home_url("/siarhe-entidad-" . $slug); ?></code>
-                    </td>
+                    <td><?php echo esc_html( $nombre ); ?></td>
+                    <td><code><?php echo esc_html( $slug ); ?></code></td>
+                    <td><code><?php echo esc_url( home_url( '/siarhe-entidad-' . $slug ) ); ?></code></td>
                 </tr>
             <?php endforeach; ?>
             </tbody>
@@ -240,7 +364,6 @@ Ejemplo: /siarhe-entidad-aguascalientes
     </form>
     <?php
 }
-
 
 /**
  * TAB: Estilos
@@ -255,7 +378,7 @@ function siarhe_render_config_tab_estilos() {
     <ul style="list-style:disc; margin-left:20px;">
         <li>Paletas de colores de los mapas (guinda, verde, dorado).</li>
         <li>Colores de los botones de zoom, home y descargas.</li>
-        <li>Temas de borde, hover, tipografías y tamaños.</li>
+        <li>Detalles de tipografía y tamaños para los controles de los mapas.</li>
     </ul>
 
     <p>
