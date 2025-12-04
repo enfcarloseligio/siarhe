@@ -99,8 +99,8 @@ const DATA_BASE = (window.SIARHE_DATA_URL || "");
 
 // GeoJSON + CSV nacional ya agregados (no el CSV "crudo" gigante).
 Promise.all([
-  d3.json(DATA_BASE + "maps/republica-mexicana.geojson"),
-  d3.csv(DATA_BASE + "nacional/republica-mexicana.csv")
+  d3.json(DATA_BASE + "assets/data/maps/republica-mexicana.geojson"),
+  d3.csv(DATA_BASE + "assets/data/nacional/republica-mexicana.csv")
 ]).then(([geoData, tasasRaw]) => {
 
   // === Año dinámico ===
