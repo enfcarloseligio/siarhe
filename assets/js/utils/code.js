@@ -1,3 +1,4 @@
+// assets/js/utils/code.js
 // ==============================
 // INSERCIÓN DE AÑO DINÁMICO GLOBAL
 // ==============================

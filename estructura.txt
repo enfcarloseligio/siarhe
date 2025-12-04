@@ -14,6 +14,10 @@ D:\USERS\JUAN.DELACRUZ\DOCUMENTS\PROYECTOS\SIARHE\ASSETS
 ¦       styles.css
 ¦       
 +---data
+¦   +---clinicas
+¦   ¦       clinicas-cateteres.csv
+¦   ¦       clinicas-heridas.csv
+¦   ¦       
 ¦   +---entidades
 ¦   ¦       aguascalientes.csv
 ¦   ¦       baja-california-sur.csv
@@ -88,6 +92,10 @@ D:\USERS\JUAN.DELACRUZ\DOCUMENTS\PROYECTOS\SIARHE\ASSETS
 ¦           
 +---js
     +---componentes
+    ¦       indicador-control.js
+    ¦       marcadores-control.js
+    ¦       zoom-controles.js
+    ¦       
     +---maps
     ¦       republica-mexicana.js
     ¦       

@@ -1,7 +1,7 @@
-// scripts/maps/republica-mexicana.js
+// assets/js/maps/republica-mexicana.js
 
 // ==============================
-// IMPORTACIONES
+// IMPORTACIONES (según estructura del plugin)
 // ==============================
 import {
   crearTooltip,
@@ -12,7 +12,7 @@ import {
 
 import {
   crearSVGBase, MAP_WIDTH, MAP_HEIGHT,
-  crearLeyenda, descargarComoPNG, crearEtiquetaMunicipio,
+  crearLeyenda, descargarComoPNG,
   construirTitulo,
   prepararEscalaYLeyenda
 } from '../utils/config-mapa.js';
@@ -22,7 +22,6 @@ import { renderTablaNacional, attachExcelButton } from '../utils/tablas.js';
 import { normalizarDataset } from '../utils/normalizacion.js';
 import { urlEntidad } from '../utils/enlaces.js';
 
-// Selector multi de marcadores + rutas/normalizador + estilos/leyenda
 import { renderMarcadoresControl } from '../componentes/marcadores-control.js';
 import { RUTAS_MARCADORES, normalizarClinicaRow } from '../utils/marcadores.config.js';
 import {
@@ -32,7 +31,6 @@ import {
   nombreTipoMarcador
 } from '../utils/marcadores.js';
 
-// 🔴 NUEVO: catálogo central de métricas
 import {
   METRICAS,
   metricLabel,
@@ -60,7 +58,6 @@ const COLOR_SIN  = '#d9d9d9';   // s/d
 const COLORES_TASAS     = ['#9b2247', 'orange', '#e6d194', 'green', 'darkgreen'];
 const COLORES_POBLACION = ['#e5f5e0', '#a1d99b', '#74c476', '#31a354', '#006d2c'];
 
-// ids válidos de entidad para el cálculo de cuartiles (1..32)
 const idsEntidades = new Set(
   Array.from({ length: 32 }, (_, i) => String(i + 1).padStart(2, "0"))
 );
@@ -68,18 +65,17 @@ const idsEntidades = new Set(
 // ==============================
 // ESTADO GLOBAL
 // ==============================
-let currentMetric = METRICAS.TASA_TOTAL; // clave interna de la métrica
+let currentMetric = METRICAS.TASA_TOTAL;
 let dataByEstado = {};
 let scale = null;
 let legendCfg = null;
 
-// Capa de marcadores y control
 let gMarcadores = svg.append("g").attr("class", "layer-marcadores");
 let marcadoresCtl = null;
 let marcadoresActivos = [];
 
 // ==============================
-// HELPERS de métricas
+// HELPERS MÉTRICAS
 // ==============================
 function esPoblacion(metricKey) {
   return isPopulation(metricKey);
@@ -92,22 +88,20 @@ function getPalette(metricKey) {
 // ==============================
 // CARGA DE DATOS
 // ==============================
-// 🔴 IMPORTANTE:
-// Leemos la URL base que WordPress inyecta como window.SIARHE_DATA_URL
-// (definida en assets.php). Si no existe, caemos a rutas relativas.
-const DATA_BASE = (window.SIARHE_DATA_URL || "");
-
-// GeoJSON + CSV nacional ya agregados (no el CSV "crudo" gigante).
+//
+// ⚠️ IMPORTANTE:
+// desde assets/js/maps → assets/data/... es "../data/..."
+// (con la estructura que me compartiste)
 Promise.all([
-  d3.json(DATA_BASE + "assets/data/maps/republica-mexicana.geojson"),
-  d3.csv(DATA_BASE + "assets/data/nacional/republica-mexicana.csv")
+  d3.json("../data/maps/republica-mexicana.geojson"),
+  d3.csv("../data/nacional/republica-mexicana.csv")
 ]).then(([geoData, tasasRaw]) => {
 
-  // === Año dinámico ===
+  // Año dinámico solo visual
   const year = new Date().getFullYear();
   document.querySelectorAll(".year").forEach(el => el.textContent = year);
 
-  // === Total nacional (fila id=9999 del CSV crudo) ===
+  // Total nacional (si tu CSV tiene fila 9999 como resumen)
   const fila9999 = tasasRaw.find(d => String(d.id) === "9999");
   const totalNacional = fila9999
     ? (Number(fila9999.enfermeras_total ?? fila9999.enfermeras) || 0)
@@ -115,7 +109,7 @@ Promise.all([
   const spanTotalNac = document.getElementById("total-enfermeras-nac");
   if (spanTotalNac) spanTotalNac.textContent = totalNacional.toLocaleString("es-MX");
 
-  // === Número de entidades federativas: auto + respaldo manual (32) ===
+  // Número de entidades federativas
   const NUM_ENTIDADES_FED = 32;
   function contarEntidadesFederativas(geo) {
     try {
@@ -134,17 +128,14 @@ Promise.all([
   const spanEnt = document.getElementById("total-entidades");
   if (spanEnt) spanEnt.textContent = numEntidades.toLocaleString("es-MX");
 
-  // (Opcional) Título SEO dinámico con año
   document.title = `SIARHE | Distribución de Profesionales de Enfermería en México ${year}`;
 
   // ==============================
-  // Normalización (GLOBAL)
+  // NORMALIZACIÓN (GLOBAL)
   // ==============================
   const tasas = normalizarDataset(tasasRaw, { scope: "nacional", extras: [] });
 
-  // ==============================
-  // Diccionario por estado
-  // ==============================
+  // Diccionario por estado (nombre → fila normalizada)
   dataByEstado = {};
   tasas.forEach(d => {
     const nombre = (d.estado || d.nombre_estado || d.NOMBRE || "").trim();
@@ -153,7 +144,7 @@ Promise.all([
   });
 
   // ==============================
-  // Proyección y paths (doble clic -> entidad)
+  // PROYECCIÓN Y PATHS
   // ==============================
   const projection = d3.geoMercator()
     .fitSize([MAP_WIDTH, MAP_HEIGHT], geoData);
@@ -171,7 +162,7 @@ Promise.all([
     .attr("fill", COLOR_SIN);
 
   // ==============================
-  // Tooltips en entidades
+  // TOOLTIP ENTIDADES
   // ==============================
   estados
     .on("mouseover", function (event, d) {
@@ -194,16 +185,13 @@ Promise.all([
       d3.select(this).classed("hover", false);
     })
     .on("dblclick", function (event, d) {
-      // Navegación a la página de la entidad
       const nombre = (d.properties.NOMBRE || "").trim();
-      const href = urlEntidad(nombre); // util que internamente hace slugify
-      if (href) {
-        window.location.href = href;
-      }
+      const href = urlEntidad(nombre);
+      if (href) window.location.href = href;
     });
 
   // ==============================
-  // Zoom + botones (incluye Home)
+  // ZOOM + CONTROLES
   // ==============================
   const zoom = d3.zoom()
     .scaleExtent([1, 8])
@@ -226,7 +214,7 @@ Promise.all([
   });
 
   // ==============================
-  // Función de repintado por métrica
+  // REPINTAR MAPA POR MÉTRICA
   // ==============================
   function actualizarMapaPorMetrica(metricKey) {
     currentMetric = metricKey;
@@ -246,7 +234,6 @@ Promise.all([
       }
     ));
 
-    // Pintado del mapa usando EXACTAMENTE la misma escala que la leyenda
     g.selectAll("path.estado")
       .transition().duration(350)
       .attr("fill", d => {
@@ -255,25 +242,21 @@ Promise.all([
         if (!item) return COLOR_SIN;
         const v = +item[tasaKey(metricKey)];
         if (!Number.isFinite(v)) return COLOR_SIN;
-        if (!esPobl && v <= 0) return COLOR_CERO; // 0.00 en gris
+        if (!esPobl && v <= 0) return COLOR_CERO;
         return scale(v);
       });
 
-    // Leyenda
     legendHost.selectAll("*").remove();
     crearLeyenda(legendHost, legendCfg);
   }
 
   // ==============================
-  // Control de indicador (select)
+  // CONTROL DE INDICADOR
   // ==============================
   const indicadorMount = document.getElementById("indicador-control");
   if (indicadorMount) {
-    // Cargamos catálogo de indicadores nacionales (opcional,
-    // puede sobre-escribir o complementar METRICAS)
     cargarIndicadoresNacionales(indicadoresNacionales);
 
-    // Usamos componente de control
     import('../componentes/indicador-control.js').then(mod => {
       const { renderIndicadorControl } = mod;
       renderIndicadorControl(indicadorMount, {
@@ -281,21 +264,20 @@ Promise.all([
         current: currentMetric,
         onChange: (key) => {
           actualizarMapaPorMetrica(key);
-          renderTabla(); // sincronizamos tabla
+          renderTabla();
         }
       });
-      // Primera renderización
+
       actualizarMapaPorMetrica(currentMetric);
       renderTabla();
     });
   } else {
-    // Si por alguna razón no existe el mount, al menos pintamos mapa/tabla
     actualizarMapaPorMetrica(currentMetric);
     renderTabla();
   }
 
   // ==============================
-  // TABLA NACIONAL + Excel
+  // TABLA NACIONAL + EXCEL
   // ==============================
   function renderTabla() {
     const mount = document.getElementById("tabla-contenido");
@@ -316,7 +298,7 @@ Promise.all([
   }
 
   // ==============================
-  // MARCADORES (CLÍNICAS, etc.)
+  // MARCADORES (CLÍNICAS, ETC.)
   // ==============================
   async function cargarYPintarTipo(tipo) {
     const ruta = RUTAS_MARCADORES[tipo];
@@ -368,7 +350,6 @@ Promise.all([
       if (ctl) controlesPorTipo.push({ tipo, ctl });
     }
 
-    // Leyenda de marcadores
     if (marcadoresCtl && marcadoresCtl.actualizarLeyenda) {
       const items = tiposSeleccionados.map(tipo => ({
         tipo,
@@ -390,7 +371,6 @@ Promise.all([
       }
     });
 
-    // Leyenda asociada
     const leyendaMarcadoresMount = d3.select("#mapa-nacional")
       .append("div")
       .attr("class", "leyenda-marcadores");
@@ -399,7 +379,7 @@ Promise.all([
   }
 
   // ==============================
-  // DESCARGAS PNG (mapa con/sin etiquetas)
+  // DESCARGAS PNG
   // ==============================
   const btnSinEtiquetas = document.getElementById("btn-png-sin-etiquetas");
   const btnConEtiquetas = document.getElementById("btn-png-con-etiquetas");
@@ -432,7 +412,6 @@ Promise.all([
         incluirCita: true
       });
 
-      // Mostramos etiquetas temporales, descargamos y las ocultamos
       const etiquetas = svg.selectAll(".etiqueta-municipio");
       etiquetas.style.display = "block";
 

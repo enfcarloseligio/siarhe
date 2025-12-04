@@ -1,4 +1,4 @@
-// scripts/utils/tablas.js
+// assets/js/utils/tablas.js
 // =======================================================
 // Tablas unificadas (nacional y municipales)
 // - Orden estable con "especiales" fijos al final

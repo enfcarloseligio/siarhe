@@ -1,4 +1,4 @@
-// scripts/utils/metricas.js
+// assets/js/utils/metricas.js
 // =======================================================
 // Catálogo central de métricas de enfermería (versión compacta)
 // =======================================================

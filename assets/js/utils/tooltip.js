@@ -1,4 +1,4 @@
-// scripts/utils/tooltip.js
+// assets/js/utils/tooltip.js
 // ==============================
 // Crear tooltip (estilos básicos)
 // ==============================

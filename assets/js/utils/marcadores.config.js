@@ -1,4 +1,4 @@
-// scripts/utils/marcadores.config.js
+// sassets/js/utils/marcadores.config.js
 import { MARCADORES_TIPOS } from "./marcadores.js";
 
 // Base de datos para marcadores: usa window.SIARHE_DATA_URL si está disponible

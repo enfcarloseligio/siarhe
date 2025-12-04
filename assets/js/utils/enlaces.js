@@ -1,4 +1,4 @@
-// scripts/utils/enlaces.js
+// assets/js/utils/enlaces.js
 // ========================================================
 // Enlaces centralizados para entidades y clínicas
 // ========================================================

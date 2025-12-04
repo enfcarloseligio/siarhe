@@ -1,4 +1,4 @@
-// scripts/utils/marcadores.js
+// assets/js/utils/marcadores.js
 // =======================================================
 // Estilos y helpers para marcadores de clínicas (puntos)
 // =======================================================

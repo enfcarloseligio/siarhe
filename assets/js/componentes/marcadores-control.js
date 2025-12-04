@@ -1,4 +1,4 @@
-// scripts/componentes/marcadores-control.js
+// assets/js/componentes/marcadores-control.js
 // ===================================================
 // Renderiza un selector multi de marcadores reutilizable
 // ===================================================

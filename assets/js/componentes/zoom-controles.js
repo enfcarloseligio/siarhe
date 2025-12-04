@@ -1,4 +1,4 @@
-// scripts/componentes/zoom-controles.js
+// assets/js/componentes/zoom-controles.js
 // Componente reutilizable de controles de zoom para todos los mapas
 
 import { activarZoomConBotones } from "../utils/config-mapa.js";

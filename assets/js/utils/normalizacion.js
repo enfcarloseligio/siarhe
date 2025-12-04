@@ -1,4 +1,4 @@
-// scripts/utils/normalizacion.js
+// assets/js/utils/normalizacion.js
 // =======================================================
 // Normalización uniforme para CSVs nacionales y estatales
 // =======================================================

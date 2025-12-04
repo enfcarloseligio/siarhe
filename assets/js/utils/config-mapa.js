@@ -1,4 +1,4 @@
-// scripts/utils/config-mapa.js
+// assets/js/utils/config-mapa.js
 // ==============================
 // CONFIGURACIÓN GLOBAL PARA MAPAS
 // ==============================

@@ -1,4 +1,4 @@
-// scripts/utils/tabla-municipios.js
+// assets/js/utils/tabla-municipios.js
 // ===============================================
 // TABLA MUNICIPAL DINÁMICA (sincronizada con #sel-metrica)
 // ===============================================
