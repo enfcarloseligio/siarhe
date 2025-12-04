@@ -4,7 +4,8 @@
 // ==============================
 export function crearTooltip() {
   const tooltip = d3.select("body").append("div")
-    .attr("class", "tooltip")
+    // usamos una clase específica para no chocar con tooltips del tema
+    .attr("class", "siarhe-tooltip")
     .style("position", "absolute")
     .style("padding", "10px")
     .style("background", "white")
@@ -12,7 +13,10 @@ export function crearTooltip() {
     .style("border-radius", "5px")
     .style("pointer-events", "none")
     .style("display", "none")
-    .style("font-family", "sans-serif");
+    .style("font-family", "sans-serif")
+    .style("font-size", "0.85rem")
+    .style("box-shadow", "0 2px 6px rgba(0,0,0,0.2)")
+    .style("z-index", "9999");   // ← por encima del mapa y del layout
   return tooltip;
 }
 
@@ -66,7 +70,7 @@ function pickDatos(datos, metricKey, labelForced) {
     };
   }
 
-  // Caso B: registro ancho + metricKey (tasa_*)
+  // Caso B: registro ancho + metricKey (tasa_* → enfermeras_*)
   if (metricKey) {
     const tasaKey = metricKey; // ej. 'tasa_primer'
     const enfKey  = metricKey.replace(/^tasa_/, "enfermeras_");

@@ -1,16 +1,18 @@
 // assets/js/utils/marcadores.config.js
 import { MARCADORES_TIPOS } from "./marcadores.js";
 
-// Base de datos para marcadores: usa window.SIARHE_DATA_URL si está disponible
-const DATA_BASE = (typeof window !== "undefined" && window.SIARHE_DATA_URL)
-  ? window.SIARHE_DATA_URL
-  : "../../data/";
+// Base de datos para marcadores dentro del plugin SIARHE
+const DATA_BASE = "/wp-content/plugins/siarhe/assets/data/";
 
-// Rutas de datasets por tipo de marcador (ajusta a tus paths reales)
+// Rutas de datasets por tipo de marcador
+// Tus CSV están en assets/data/clinicas/
 export const RUTAS_MARCADORES = {
-  [MARCADORES_TIPOS.CATETER]: DATA_BASE + "clinicas/clinicas-cateteres.csv",
-  [MARCADORES_TIPOS.HERIDAS]: DATA_BASE + "clinicas/clinicas-heridas.csv",
-  // agrega más: [MARCADORES_TIPOS.X] : "ruta.csv"
+  [MARCADORES_TIPOS.CATETER]:
+    DATA_BASE + "clinicas/clinicas-cateteres.csv",
+  [MARCADORES_TIPOS.HERIDAS]:
+    DATA_BASE + "clinicas/clinicas-heridas.csv",
+  // Si agregas más tipos:
+  // [MARCADORES_TIPOS.X]: DATA_BASE + "clinicas/clinicas-x.csv",
 };
 
 /**

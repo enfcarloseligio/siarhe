@@ -8,6 +8,87 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
+ * Helper: versión de assets basada en filemtime.
+ *
+ * Así forzamos al navegador a pedir la versión nueva cuando cambie el archivo,
+ * evitando problemas con caché de navegador / WP Rocket.
+ */
+if ( ! function_exists( 'siarhe_asset_version' ) ) {
+    function siarhe_asset_version( $relative_path ) {
+        if ( ! defined( 'SIARHE_PLUGIN_DIR' ) ) {
+            // Fallback por si acaso; casi seguro ya lo tienes definido en el plugin principal.
+            return time();
+        }
+
+        $file = trailingslashit( SIARHE_PLUGIN_DIR ) . ltrim( $relative_path, '/\\' );
+        if ( file_exists( $file ) ) {
+            return filemtime( $file );
+        }
+
+        // Si no existe el archivo, devolvemos una versión genérica para no romper nada.
+        return defined( 'SIARHE_PLUGIN_VERSION' ) ? SIARHE_PLUGIN_VERSION : time();
+    }
+}
+
+/**
+ * Encola assets específicos para el mapa nacional.
+ * Usa type="module" para el JS principal y versiona con filemtime().
+ */
+if ( ! function_exists( 'siarhe_enqueue_mapa_nacional_assets' ) ) {
+    function siarhe_enqueue_mapa_nacional_assets() {
+
+        if ( ! defined( 'SIARHE_PLUGIN_URL' ) || ! defined( 'SIARHE_PLUGIN_DIR' ) ) {
+            return;
+        }
+
+        // ==========
+        // CSS
+        // ==========
+        wp_enqueue_style(
+            'siarhe-styles',
+            SIARHE_PLUGIN_URL . 'assets/css/styles.css',
+            [],
+            siarhe_asset_version( 'assets/css/styles.css' )
+        );
+
+        wp_enqueue_style(
+            'siarhe-mapas',
+            SIARHE_PLUGIN_URL . 'assets/css/mapas.css',
+            [ 'siarhe-styles' ],
+            siarhe_asset_version( 'assets/css/mapas.css' )
+        );
+
+        // ==========
+        // JS
+        // ==========
+
+        // D3 desde CDN (lo usamos como dependencia general)
+        wp_enqueue_script(
+            'd3',
+            'https://d3js.org/d3.v7.min.js',
+            [],
+            '7.9.0',
+            true
+        );
+
+        // Script principal del mapa nacional (ES module)
+        $handle_mapa = 'siarhe-mapa-nacional';
+        $src_mapa    = SIARHE_PLUGIN_URL . 'assets/js/maps/republica-mexicana.js';
+
+        wp_enqueue_script(
+            $handle_mapa,
+            $src_mapa,
+            [ 'd3' ],
+            siarhe_asset_version( 'assets/js/maps/republica-mexicana.js' ),
+            true
+        );
+
+        // Muy importante: indicamos que es módulo ES6 para que funcionen los imports.
+        wp_script_add_data( $handle_mapa, 'type', 'module' );
+    }
+}
+
+/**
  * Shortcode combinado: mapa + tabla de entidad (placeholder).
  */
 function siarhe_entidad_shortcode( $atts ) {
@@ -188,13 +269,19 @@ function siarhe_mapa_nacional_shortcode( $atts ) {
                 <div class="zoom-controles"></div>
             </div>
 
-            <!-- Nota y fuente (texto estático, puedes editarlo luego si quieres) -->
+            <!-- Nota y fuente -->
             <p id="nota">
                 <strong>Nota:</strong>
                 Las tasas se calculan con base en la población censal más reciente disponible
                 y en los registros del Sistema de Información Administrativa de Recursos Humanos en Enfermería (SIARHE).
                 Los intervalos de color se establecen con base en el valor mínimo, los cuartiles (Q1, mediana y Q3) y el valor máximo de la distribución.
             </p>
+
+            <!-- Botones de descarga del mapa -->
+            <div class="descarga-container">
+                <button id="btn-png-sin-etiquetas" class="boton">🗺️ Descargar mapa</button>
+                <button id="btn-png-con-etiquetas" class="boton">🗺️ Descargar mapa con etiquetas</button>
+            </div>
         </section>
 
         <!-- Sección de tabla nacional -->
