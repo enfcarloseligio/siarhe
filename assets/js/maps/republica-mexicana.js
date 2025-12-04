@@ -34,15 +34,18 @@ import {
 
 // 🔴 NUEVO: catálogo central de métricas
 import {
-  METRICAS,          // objeto plano, por si lo requieren otras utilidades
+  METRICAS,
   metricLabel,
   metricPalette,
   tasaKey,
   isPopulation
 } from '../utils/metricas.js';
 
+import { indicadoresNacionales } from '../utils/window.indicadoresSIARHE.js';
+import { cargarIndicadoresNacionales } from '../utils/cargar-indicadores.js';
+
 // ==============================
-// CREACIÓN DEL MAPA
+// SVG BASE + TOOLTIP + LEYENDA
 // ==============================
 const { svg, g } = crearSVGBase("#mapa-nacional", "Mapa de distribución nacional de enfermeras");
 const tooltip = crearTooltip();
@@ -58,16 +61,46 @@ const COLORES_TASAS     = ['#9b2247', 'orange', '#e6d194', 'green', 'darkgreen']
 const COLORES_POBLACION = ['#e5f5e0', '#a1d99b', '#74c476', '#31a354', '#006d2c'];
 
 // ids válidos de entidad para el cálculo de cuartiles (1..32)
-const idsEntidades = new Set(Array.from({ length: 32 }, (_, i) => String(i + 1)));
+const idsEntidades = new Set(
+  Array.from({ length: 32 }, (_, i) => String(i + 1).padStart(2, "0"))
+);
 
-let currentMetric = "tasa_total";
+// ==============================
+// ESTADO GLOBAL
+// ==============================
+let currentMetric = METRICAS.TASA_TOTAL; // clave interna de la métrica
+let dataByEstado = {};
+let scale = null;
+let legendCfg = null;
+
+// Capa de marcadores y control
+let gMarcadores = svg.append("g").attr("class", "layer-marcadores");
+let marcadoresCtl = null;
+let marcadoresActivos = [];
+
+// ==============================
+// HELPERS de métricas
+// ==============================
+function esPoblacion(metricKey) {
+  return isPopulation(metricKey);
+}
+
+function getPalette(metricKey) {
+  return metricPalette(metricKey) || (esPoblacion(metricKey) ? COLORES_POBLACION : COLORES_TASAS);
+}
 
 // ==============================
 // CARGA DE DATOS
 // ==============================
+// 🔴 IMPORTANTE:
+// Leemos la URL base que WordPress inyecta como window.SIARHE_DATA_URL
+// (definida en assets.php). Si no existe, caemos a rutas relativas.
+const DATA_BASE = (window.SIARHE_DATA_URL || "");
+
+// GeoJSON + CSV nacional ya agregados (no el CSV "crudo" gigante).
 Promise.all([
-  d3.json("../data/maps/republica-mexicana.geojson"),
-  d3.csv("../data/rate/republica-mexicana.csv")
+  d3.json(DATA_BASE + "maps/republica-mexicana.geojson"),
+  d3.csv(DATA_BASE + "nacional/republica-mexicana.csv")
 ]).then(([geoData, tasasRaw]) => {
 
   // === Año dinámico ===
@@ -112,56 +145,106 @@ Promise.all([
   // ==============================
   // Diccionario por estado
   // ==============================
-  const dataByEstado = {};
+  dataByEstado = {};
   tasas.forEach(d => {
-    const estado = (d.estado || "").trim();
-    if (!estado) return;
-    dataByEstado[estado] = {
-      poblacion: d.poblacion,
-
-      enfermeras_total:   d.enfermeras_total,   tasa_total:   d.tasa_total,
-      enfermeras_primer:  d.enfermeras_primer,  tasa_primer:  d.tasa_primer,
-      enfermeras_segundo: d.enfermeras_segundo, tasa_segundo: d.tasa_segundo,
-      enfermeras_tercer:  d.enfermeras_tercer,  tasa_tercer:  d.tasa_tercer,
-
-      enfermeras_apoyo:   d.enfermeras_apoyo,   tasa_apoyo:   d.tasa_apoyo,
-      enfermeras_escuelas:d.enfermeras_escuelas,tasa_escuelas:d.tasa_escuelas,
-
-      enfermeras_administrativas: d.enfermeras_administrativas,
-      tasa_administrativas:       d.tasa_administrativas,
-
-      enfermeras_no_aplica:   d.enfermeras_no_aplica,   tasa_no_aplica:   d.tasa_no_aplica,
-      enfermeras_no_asignado: d.enfermeras_no_asignado, tasa_no_asignado: d.tasa_no_asignado
-    };
+    const nombre = (d.estado || d.nombre_estado || d.NOMBRE || "").trim();
+    if (!nombre) return;
+    dataByEstado[nombre] = d;
   });
 
   // ==============================
-  // Utilidad: paleta por métrica
+  // Proyección y paths (doble clic -> entidad)
   // ==============================
-  function paletteFor(metricKey) {
-    const pal = metricPalette(metricKey);
-    return pal === "poblacion" ? COLORES_POBLACION : COLORES_TASAS;
-  }
+  const projection = d3.geoMercator()
+    .fitSize([MAP_WIDTH, MAP_HEIGHT], geoData);
+
+  const path = d3.geoPath().projection(projection);
+
+  const estados = g.selectAll("path.estado")
+    .data(geoData.features)
+    .enter()
+    .append("path")
+    .attr("class", "estado")
+    .attr("d", path)
+    .attr("stroke", "#ffffff")
+    .attr("stroke-width", 0.5)
+    .attr("fill", COLOR_SIN);
 
   // ==============================
-  // Pintado + leyenda
+  // Tooltips en entidades
   // ==============================
-  function recomputeAndPaint() {
-    const PALETTE = paletteFor(currentMetric);
-    const esPoblacion = isPopulation(currentMetric);
+  estados
+    .on("mouseover", function (event, d) {
+      const nombre = (d.properties.NOMBRE || "").trim();
+      const item = dataByEstado[nombre];
+      mostrarTooltip(tooltip, event, {
+        nombre,
+        data: item,
+        metricKey: currentMetric
+      });
+      d3.select(this).classed("hover", true);
+    })
+    .on("mousemove", function (event) {
+      tooltip
+        .style("left", (event.pageX + 10) + "px")
+        .style("top", (event.pageY - 28) + "px");
+    })
+    .on("mouseout", function () {
+      ocultarTooltip(tooltip);
+      d3.select(this).classed("hover", false);
+    })
+    .on("dblclick", function (event, d) {
+      // Navegación a la página de la entidad
+      const nombre = (d.properties.NOMBRE || "").trim();
+      const href = urlEntidad(nombre); // util que internamente hace slugify
+      if (href) {
+        window.location.href = href;
+      }
+    });
 
-    const { scale, legendCfg } = prepararEscalaYLeyenda(
-      tasas.filter(d => idsEntidades.has(String(d.id))), // 1..32
-      METRICAS,              // catálogo central (para keys)
-      currentMetric,
+  // ==============================
+  // Zoom + botones (incluye Home)
+  // ==============================
+  const zoom = d3.zoom()
+    .scaleExtent([1, 8])
+    .on("zoom", (event) => {
+      g.attr("transform", event.transform);
+      if (marcadoresCtl && marcadoresCtl.updateZoom) {
+        marcadoresCtl.updateZoom(event.transform.k);
+      }
+    });
+
+  svg.call(zoom);
+
+  const homeUrl = window.SIARHE_HOME_NACIONAL || window.location.href;
+
+  renderZoomControles(".zoom-controles", {
+    svg,
+    zoom,
+    homeUrl,
+    resetTransform: d3.zoomIdentity
+  });
+
+  // ==============================
+  // Función de repintado por métrica
+  // ==============================
+  function actualizarMapaPorMetrica(metricKey) {
+    currentMetric = metricKey;
+
+    const esPobl = esPoblacion(metricKey);
+    const palette = getPalette(metricKey);
+
+    ({ scale, legendCfg } = prepararEscalaYLeyenda(
+      tasas,
+      tasaKey(metricKey),
       {
-        palette: PALETTE,
-        titulo: metricLabel(currentMetric),
+        palette,
+        titulo: metricLabel(metricKey),
         idKey: "id",
         excludeIds: ["8888", "9999"],
         clamp: true
       }
-    );
+    ));
 
     // Pintado del mapa usando EXACTAMENTE la misma escala que la leyenda
     g.selectAll("path.estado")
@@ -170,9 +253,9 @@ Promise.all([
         const nombre = (d.properties.NOMBRE || "").trim();
         const item = dataByEstado[nombre];
         if (!item) return COLOR_SIN;
-        const v = +item[tasaKey(currentMetric)];
+        const v = +item[tasaKey(metricKey)];
         if (!Number.isFinite(v)) return COLOR_SIN;
-        if (!esPoblacion && v <= 0) return COLOR_CERO; // 0.00 en gris
+        if (!esPobl && v <= 0) return COLOR_CERO; // 0.00 en gris
         return scale(v);
       });
 
@@ -182,62 +265,59 @@ Promise.all([
   }
 
   // ==============================
-  // Proyección y paths (doble clic -> entidad)
+  // Control de indicador (select)
   // ==============================
-  const projection = d3.geoMercator()
-    .scale(2000)
-    .center([-102, 24])
-    .translate([MAP_WIDTH / 2, MAP_HEIGHT / 2]);
+  const indicadorMount = document.getElementById("indicador-control");
+  if (indicadorMount) {
+    // Cargamos catálogo de indicadores nacionales (opcional,
+    // puede sobre-escribir o complementar METRICAS)
+    cargarIndicadoresNacionales(indicadoresNacionales);
 
-  const path = d3.geoPath().projection(projection);
-
-  let ultimoClick = 0;
-
-  g.selectAll("path.estado")
-    .data(geoData.features)
-    .join("path")
-    .attr("class", "estado")
-    .attr("d", path)
-    .attr("stroke", "#fff")
-    .attr("stroke-width", 0.5)
-    .attr("vector-effect", "non-scaling-stroke")
-    .attr("fill", COLOR_SIN)
-    .on("mouseover", function (event, d) {
-      const nombre = (d.properties.NOMBRE || "").trim();
-      const item = dataByEstado[nombre];
-
-      d3.select(this).attr("stroke-width", 1.5);
-
-      mostrarTooltip(tooltip, event, nombre, item, {
-        metricKey: tasaKey(currentMetric),
-        label: metricLabel(currentMetric),
-        onlyPopulation: isPopulation(currentMetric)
+    // Usamos componente de control
+    import('../componentes/indicador-control.js').then(mod => {
+      const { renderIndicadorControl } = mod;
+      renderIndicadorControl(indicadorMount, {
+        metricas: METRICAS,
+        current: currentMetric,
+        onChange: (key) => {
+          actualizarMapaPorMetrica(key);
+          renderTabla(); // sincronizamos tabla
+        }
       });
-    })
-    .on("mousemove", event => {
-      tooltip.style("left", (event.pageX + 10) + "px")
-             .style("top",  (event.pageY - 28) + "px");
-    })
-    .on("mouseout", function () {
-      ocultarTooltip(tooltip);
-      d3.select(this).attr("stroke-width", 0.5);
-    })
-    .on("click", function (event, d) {
-      const ahora = Date.now();
-      if (ahora - ultimoClick < 350) {
-        const nombre = (d.properties.NOMBRE || "").trim();
-        const href = urlEntidad(nombre);
-        if (href) window.location.href = href;
-      }
-      ultimoClick = ahora;
+      // Primera renderización
+      actualizarMapaPorMetrica(currentMetric);
+      renderTabla();
+    });
+  } else {
+    // Si por alguna razón no existe el mount, al menos pintamos mapa/tabla
+    actualizarMapaPorMetrica(currentMetric);
+    renderTabla();
+  }
+
+  // ==============================
+  // TABLA NACIONAL + Excel
+  // ==============================
+  function renderTabla() {
+    const mount = document.getElementById("tabla-contenido");
+    if (!mount) return;
+
+    renderTablaNacional(mount, {
+      data: tasas,
+      metricKey: currentMetric,
+      metricLabel: metricLabel(currentMetric)
     });
 
-  // ==============================
-  // CAPA DE MARCADORES (multi-tipo)
-  // ==============================
-  const gMarcadores = g.append("g").attr("class", "capa-marcadores");
-  let marcadoresCtlPorTipo = new Map();
+    attachExcelButton("#descargar-excel", {
+      data: tasas,
+      metricKey: currentMetric,
+      metricLabel: metricLabel(currentMetric),
+      filename: `siarhe_mapa_nacional_${currentMetric}_${year}.xlsx`
+    });
+  }
 
+  // ==============================
+  // MARCADORES (CLÍNICAS, etc.)
+  // ==============================
   async function cargarYPintarTipo(tipo) {
     const ruta = RUTAS_MARCADORES[tipo];
     if (!ruta) return null;
@@ -267,178 +347,107 @@ Promise.all([
     return ctl;
   }
 
-  async function updateMarcadores(tiposSeleccionados = []) {
-    const setSel = new Set(tiposSeleccionados);
+  function limpiarMarcadores() {
+    gMarcadores.selectAll("*").remove();
+  }
 
-    for (const [tipo, ctl] of marcadoresCtlPorTipo.entries()) {
-      if (!setSel.has(tipo)) {
-        ctl.selection.remove();
-        marcadoresCtlPorTipo.delete(tipo);
+  async function actualizarMarcadores(tiposSeleccionados) {
+    limpiarMarcadores();
+    marcadoresActivos = tiposSeleccionados;
+
+    if (!tiposSeleccionados.length) {
+      if (marcadoresCtl && marcadoresCtl.actualizarLeyenda) {
+        marcadoresCtl.actualizarLeyenda([]);
       }
+      return;
     }
 
-    for (const tipo of setSel) {
-      if (!marcadoresCtlPorTipo.has(tipo)) {
-        const ctl = await cargarYPintarTipo(tipo);
-        if (ctl) marcadoresCtlPorTipo.set(tipo, ctl);
-      }
+    const controlesPorTipo = [];
+    for (const tipo of tiposSeleccionados) {
+      const ctl = await cargarYPintarTipo(tipo);
+      if (ctl) controlesPorTipo.push({ tipo, ctl });
     }
 
-    const tiposPresentes = Array.from(marcadoresCtlPorTipo.keys());
-    svg.selectAll(".leyenda-marcadores").remove();
-    if (tiposPresentes.length) {
-      crearLeyendaMarcadores(svg, tiposPresentes, {
-        x: 30,
-        y: MAP_HEIGHT - 110,
-        title: "Marcadores",
-        dx: 0,
-        dyStep: 18
+    // Leyenda de marcadores
+    if (marcadoresCtl && marcadoresCtl.actualizarLeyenda) {
+      const items = tiposSeleccionados.map(tipo => ({
+        tipo,
+        nombre: nombreTipoMarcador(tipo)
+      }));
+      marcadoresCtl.actualizarLeyenda(items);
+    }
+  }
+
+  const mountMarcadores = document.getElementById("control-marcadores");
+  if (mountMarcadores) {
+    marcadoresCtl = renderMarcadoresControl(mountMarcadores, {
+      tiposDisponibles: [
+        MARCADORES_TIPOS.CATETER,
+        MARCADORES_TIPOS.HERIDAS,
+      ],
+      onChange: (tipos) => {
+        actualizarMarcadores(tipos);
+      }
+    });
+
+    // Leyenda asociada
+    const leyendaMarcadoresMount = d3.select("#mapa-nacional")
+      .append("div")
+      .attr("class", "leyenda-marcadores");
+
+    crearLeyendaMarcadores(leyendaMarcadoresMount, []);
+  }
+
+  // ==============================
+  // DESCARGAS PNG (mapa con/sin etiquetas)
+  // ==============================
+  const btnSinEtiquetas = document.getElementById("btn-png-sin-etiquetas");
+  const btnConEtiquetas = document.getElementById("btn-png-con-etiquetas");
+
+  if (btnSinEtiquetas) {
+    btnSinEtiquetas.addEventListener("click", () => {
+      const titulo = construirTitulo({
+        anio: year,
+        ambito: "nacional",
+        descripcion: metricLabel(currentMetric),
+        incluirCita: true
       });
-    }
-  }
 
-  // ==============================
-  // ZOOM (y tamaño visual estable de marcadores)
-  // ==============================
-  const zoom = d3.zoom()
-    .scaleExtent([1, 20])
-    .on("zoom", (event) => {
-      g.attr("transform", event.transform);
-      for (const ctl of marcadoresCtlPorTipo.values()) {
-        ctl.updateZoom(event.transform.k);
-      }
-    });
-
-  svg.call(zoom);
-
-  renderZoomControles("#mapa-nacional", {
-    svg,
-    g,
-    zoom,
-    showHome: false,
-    idsPrefix: "rep",
-    escalaMin: 1,
-    escalaMax: 20,
-    paso: 0.5
-  });
-
-  // ==============================
-  // Etiquetas (apagadas por default)
-  // ==============================
-  const labelsGroup = g.append("g")
-    .attr("id", "etiquetas-municipios")
-    .style("display", "none");
-
-  const nombresUnicos = new Set();
-  geoData.features.forEach(d => {
-    const nombre = (d.properties.NOMBRE || "").trim();
-    if (!nombre || nombresUnicos.has(nombre)) return;
-    const [x, y] = path.centroid(d);
-    crearEtiquetaMunicipio(labelsGroup, nombre, x, y, { fontSize: "6px" });
-    nombresUnicos.add(nombre);
-  });
-
-  // ==============================
-  // --- SELECTOR + TABLA SINCRONIZADOS ---
-  // ==============================
-  const selMetrica = document.getElementById("sel-metrica");
-  if (selMetrica) currentMetric = selMetrica.value || currentMetric;
-
-  // Primera pintura del mapa con la métrica actual
-  recomputeAndPaint();
-
-  // TABLA NACIONAL (creación)
-  const tablaNac = renderTablaNacional({
-    data: tasas,
-    METRICAS,             // catálogo central
-    metricKey: currentMetric,
-    hostSelector: "#tabla-contenido"
-  });
-
-  // === DESCARGA DE EXCEL DINÁMICA ===
-  function resetExcelButtonListener() {
-    const btn = document.querySelector("#descargar-excel");
-    if (!btn) return;
-    const clone = btn.cloneNode(true);
-    btn.parentNode.replaceChild(clone, btn);
-  }
-
-  function actualizarDescargaExcel() {
-    const nombreArchivo = `enfermeras-${currentMetric}.xlsx`;
-    const nombreHoja = metricLabel(currentMetric);
-
-    resetExcelButtonListener();
-    attachExcelButton({
-      buttonSelector: "#descargar-excel",
-      filenameBase: nombreArchivo,
-      sheetName: nombreHoja
-    });
-  }
-
-  actualizarDescargaExcel();
-
-  if (selMetrica) {
-    selMetrica.addEventListener("change", () => {
-      currentMetric = selMetrica.value;
-      recomputeAndPaint();
-      tablaNac.update(currentMetric);
-      actualizarDescargaExcel();
-    });
-  }
-
-  // ==============================
-  // SELECTOR DE MARCADORES
-  // ==============================
-  const itemsMarcadores = Object.values(MARCADORES_TIPOS).map(t => ({
-    value: t,
-    label: nombreTipoMarcador(t)
-  }));
-
-  const marcCtl = renderMarcadoresControl("#control-marcadores", {
-    items: itemsMarcadores,
-    label: "Marcadores",
-    size: 4
-  });
-
-  marcCtl.setSelected([]);
-  marcCtl.onChange(async () => {
-    const seleccion = marcCtl.getSelected();
-    await updateMarcadores(seleccion);
-  });
-
-  // ==============================
-  // DESCARGA PNG
-  // ==============================
-  document.getElementById("descargar-sin-etiquetas")?.addEventListener("click", () => {
-    const titulo = construirTitulo(currentMetric, { entidad: null, year });
-    const etiquetas = document.getElementById("etiquetas-municipios");
-    if (etiquetas) etiquetas.style.display = "none";
-    setTimeout(() => {
       descargarComoPNG(
         "#mapa-nacional svg",
-        "mapa-enfermeras-mexico-sin-nombres.png",
+        "mapa-enfermeras-mexico.png",
         MAP_WIDTH,
         MAP_HEIGHT,
         { titulo }
       );
-    }, 100);
-  });
+    });
+  }
 
-  document.getElementById("descargar-con-etiquetas")?.addEventListener("click", () => {
-    const titulo = construirTitulo(currentMetric, { entidad: null, year });
-    const etiquetas = document.getElementById("etiquetas-municipios");
-    if (etiquetas) etiquetas.style.display = "block";
-    setTimeout(() => {
-      descargarComoPNG(
-        "#mapa-nacional svg",
-        "mapa-enfermeras-mexico-con-nombres.png",
-        MAP_WIDTH,
-        MAP_HEIGHT,
-        { titulo }
-      );
-      etiquetas.style.display = "none";
-    }, 100);
-  });
+  if (btnConEtiquetas) {
+    btnConEtiquetas.addEventListener("click", () => {
+      const titulo = construirTitulo({
+        anio: year,
+        ambito: "nacional",
+        descripcion: metricLabel(currentMetric),
+        incluirCita: true
+      });
+
+      // Mostramos etiquetas temporales, descargamos y las ocultamos
+      const etiquetas = svg.selectAll(".etiqueta-municipio");
+      etiquetas.style.display = "block";
+
+      setTimeout(() => {
+        descargarComoPNG(
+          "#mapa-nacional svg",
+          "mapa-enfermeras-mexico-con-nombres.png",
+          MAP_WIDTH,
+          MAP_HEIGHT,
+          { titulo }
+        );
+        etiquetas.style.display = "none";
+      }, 100);
+    });
+  }
 
 }).catch(error => {
   console.error("Error al cargar los datos del mapa nacional:", error);

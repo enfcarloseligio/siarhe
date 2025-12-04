@@ -1,10 +1,15 @@
 // scripts/utils/marcadores.config.js
 import { MARCADORES_TIPOS } from "./marcadores.js";
 
+// Base de datos para marcadores: usa window.SIARHE_DATA_URL si está disponible
+const DATA_BASE = (typeof window !== "undefined" && window.SIARHE_DATA_URL)
+  ? window.SIARHE_DATA_URL
+  : "../data/";
+
 // Rutas de datasets por tipo de marcador (ajusta a tus paths reales)
 export const RUTAS_MARCADORES = {
-  [MARCADORES_TIPOS.CATETER]: "../data/clinicas/clinicas-cateteres.csv",
-  [MARCADORES_TIPOS.HERIDAS]: "../data/clinicas/clinicas-heridas.csv",
+  [MARCADORES_TIPOS.CATETER]: DATA_BASE + "clinicas/clinicas-cateteres.csv",
+  [MARCADORES_TIPOS.HERIDAS]: DATA_BASE + "clinicas/clinicas-heridas.csv",
   // agrega más: [MARCADORES_TIPOS.X] : "ruta.csv"
 };
 
@@ -15,8 +20,8 @@ export const RUTAS_MARCADORES = {
  */
 export function normalizarClinicaRow(d, tipo) {
   return {
-    clues: (d.CLUES || d.clues || "").trim().toUpperCase(),
-    inst_cod: (d.Clave_Institucion || d.inst_cod || "").trim().toUpperCase(),
+    clues: (d.CLUES || d.clues || "").trim(),
+    clues_nombre: (d.NOMBRE_CLUES || d.nombre_clues || "").trim(),
     institucion: (d.Institucion || d.institucion || "").trim(),
     ent_cod: String(d.Clave_Entidad || d.ent_cod || "").padStart(2, "0"),
     entidad: (d.Entidad || d.entidad || "").trim(),
