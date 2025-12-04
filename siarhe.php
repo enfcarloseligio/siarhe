@@ -2,7 +2,7 @@
 /**
  * Plugin Name: SIARHE - Sistema de Información Administrativa de Recursos Humanos en Enfermería
  * Description: Herramientas de análisis, mapas y tableros basados en los datos del SIARHE. Los mapas utilizan cortes globales preprocesados (corte activo) y no consultan las bases maestras en cada visita.
- * Version: 0.1.1.8
+ * Version: 0.1.1.9
  * Author: enfcarloseligio
  * Text Domain: siarhe
  */

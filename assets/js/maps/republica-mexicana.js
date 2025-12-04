@@ -56,15 +56,12 @@ const legendHost = svg.append("g").attr("id", "legend-host");
 // CONSTANTES / CONFIG
 // ==============================
 
-// Paletas de respaldo (si no vienen definidas en metricas.js)
+// Paletas base
 const COLORES_TASAS     = ['#9b2247', 'orange', '#e6d194', 'green', 'darkgreen'];
 const COLORES_POBLACION = ['#e5f5e0', '#a1d99b', '#74c476', '#31a354', '#006d2c'];
 
-// ==============================
-// ESTADO GLOBAL
-// ==============================
-// Valor por defecto robusto
-let currentMetric = (METRICAS && METRICAS.TASA_TOTAL) ? METRICAS.TASA_TOTAL : "tasa_total";
+// Estado
+let currentMetric = "tasa_total";  // clave de METRICAS
 let dataByEstado = {};
 let scale = null;
 let legendCfg = null;
@@ -80,15 +77,23 @@ function esPoblacion(metricKey) {
 }
 
 function getPalette(metricKey) {
-  return metricPalette(metricKey) || (esPoblacion(metricKey) ? COLORES_POBLACION : COLORES_TASAS);
+  const pal = metricPalette(metricKey);
+
+  // Si metricPalette devolviera directamente un arreglo de colores
+  if (Array.isArray(pal)) return pal;
+
+  // Si devuelve solo el tipo ('poblacion' / 'tasas')
+  if (pal === "poblacion") return COLORES_POBLACION;
+
+  // Cualquier otra cosa (incluye 'tasas' por defecto)
+  return COLORES_TASAS;
 }
 
 // ==============================
 // CARGA DE DATOS
 // ==============================
 //
-// Prefijo hacia los datos del plugin. Si algún día cambias la carpeta
-// del plugin, solo habrá que actualizar esta constante.
+// Prefijo hacia los datos del plugin.
 const DATA_BASE = "/wp-content/plugins/siarhe/assets/data/";
 
 Promise.all([
@@ -205,9 +210,9 @@ Promise.all([
   renderZoomControles(".zoom-controles", {
     svg,
     g,
-    zoom      // 👈 sin showHome ni homeHref → no aparece el botón Home
+    zoom
+    // sin showHome → en nacional no aparece botón Home
   });
-
 
   // ==============================
   // REPINTAR MAPA POR MÉTRICA
@@ -218,7 +223,6 @@ Promise.all([
     const esPobl = esPoblacion(metricKey);
     const palette = getPalette(metricKey);
 
-    // 🔧 Ajuste importante: usar METRICAS + metricKey, no tasaKey aquí
     ({ scale, legendCfg } = prepararEscalaYLeyenda(
       tasas,
       METRICAS,
@@ -245,12 +249,12 @@ Promise.all([
       });
 
     legendHost.selectAll("*").remove();
-    crearLeyenda(legendHost, legendCfg);
+    crearLeyenda(legendCfg ? legendHost : null, legendCfg);
   }
 
   // ==============================
   // CONTROL DE INDICADOR (selector)
-  // ==============================
+// ==============================
   const indicadorMount = document.getElementById("indicador-control");
   if (indicadorMount) {
     import('../componentes/indicador-control.js').then(mod => {
@@ -295,7 +299,7 @@ Promise.all([
 
   // ==============================
   // MARCADORES (CLÍNICAS, ETC.)
-  // ==============================
+// ==============================
   async function cargarYPintarTipo(tipo) {
     const ruta = RUTAS_MARCADORES[tipo];
     if (!ruta) return null;
