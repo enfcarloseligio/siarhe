@@ -1,10 +1,10 @@
-// sassets/js/utils/marcadores.config.js
+// assets/js/utils/marcadores.config.js
 import { MARCADORES_TIPOS } from "./marcadores.js";
 
 // Base de datos para marcadores: usa window.SIARHE_DATA_URL si está disponible
 const DATA_BASE = (typeof window !== "undefined" && window.SIARHE_DATA_URL)
   ? window.SIARHE_DATA_URL
-  : "../data/";
+  : "../../data/";
 
 // Rutas de datasets por tipo de marcador (ajusta a tus paths reales)
 export const RUTAS_MARCADORES = {

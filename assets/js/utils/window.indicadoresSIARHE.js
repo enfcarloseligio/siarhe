@@ -1,6 +1,10 @@
 // assets/js/utils/window.indicadoresSIARHE.js
+
 document.addEventListener("DOMContentLoaded", () => {
-  d3.csv("data/indicators/indicadores-clave.csv").then(data => {
+
+  // Ruta corregida respetando la estructura del plugin
+  d3.csv("../../data/indicators/indicadores-clave.csv").then(data => {
+
     const row = data[0];
 
     // Guardamos los valores en window para uso global
@@ -28,7 +32,9 @@ document.addEventListener("DOMContentLoaded", () => {
         el.textContent = texto;
       }
     });
+
   }).catch(error => {
     console.error("Error al cargar indicadores SIARHE:", error);
   });
+
 });

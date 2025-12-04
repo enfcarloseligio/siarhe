@@ -52,6 +52,9 @@ D:\USERS\JUAN.DELACRUZ\DOCUMENTS\PROYECTOS\SIARHE\ASSETS
 ¦   ¦       yucatan.csv
 ¦   ¦       zacatecas.csv
 ¦   ¦       
+¦   +---indicators
+¦   ¦       indicadores-clave.csv
+¦   ¦       
 ¦   +---maps
 ¦   ¦       aguascalientes.geojson
 ¦   ¦       baja-california-sur.geojson

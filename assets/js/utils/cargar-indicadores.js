@@ -1,37 +1,49 @@
 // assets/js/utils/cargar-indicadores.js
+
 document.addEventListener("DOMContentLoaded", () => {
   const contenedor = document.getElementById("contenedor-indicadores");
+  if (!contenedor) return;
 
-  d3.csv("../data/indicators/indicadores-clave.csv").then(data => {
-    const row = data[0]; // Solo hay una fila
+  // Ruta mínima correcta según estructura del plugin
+  const RUTA_INDICADORES = "../../data/indicators/indicadores-clave.csv";
 
-    const etiquetas = {
-      enfermeras: { nombre: "Enfermeras registradas", unidad: "" },
-      tasa: { nombre: "Tasa nacional", unidad: "" },
-      edad: { nombre: "Promedio de edad", unidad: "años" },
-      profesional: { nombre: "Con nivel profesional", unidad: "%" },
-    };
+  d3.csv(RUTA_INDICADORES)
+    .then(data => {
+      if (!data || !data.length) return;
 
-    const formatearNumero = new Intl.NumberFormat("en-US", {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 2,
-    });
+      const fila = data[0];
 
-    Object.keys(row).forEach(key => {
-      let valor = row[key];
-      if (valor) {
-        const { nombre, unidad } = etiquetas[key] || { nombre: key, unidad: "" };
-        const valorFormateado = formatearNumero.format(parseFloat(valor));
+      const etiquetas = {
+        enfermeras: { nombre: "Enfermeras registradas", unidad: "" },
+        tasa: { nombre: "Tasa nacional", unidad: "" },
+        edad: { nombre: "Promedio de edad", unidad: "años" },
+        profesional: { nombre: "Con nivel profesional", unidad: "%" },
+      };
+
+      const format = new Intl.NumberFormat("es-MX", {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 2,
+      });
+
+      for (const key in fila) {
+        const valor = fila[key];
+        if (valor === "" || valor === undefined || valor === null) continue;
+
+        const meta = etiquetas[key] || { nombre: key, unidad: "" };
+
+        const numeric = parseFloat(valor);
+        const mostrado = Number.isFinite(numeric) ? format.format(numeric) : valor;
+
         const div = document.createElement("div");
         div.className = "indicador";
+
         div.innerHTML = `
-          <strong>${valorFormateado}</strong><br>
-          ${nombre}${unidad ? ` (${unidad})` : ""}
+          <strong>${mostrado}</strong><br>
+          ${meta.nombre}${meta.unidad ? ` (${meta.unidad})` : ""}
         `;
+
         contenedor.appendChild(div);
       }
-    });
-  }).catch(error => {
-    console.error("Error al cargar los indicadores:", error);
-  });
+    })
+    .catch(err => console.error("Error al cargar los indicadores:", err));
 });

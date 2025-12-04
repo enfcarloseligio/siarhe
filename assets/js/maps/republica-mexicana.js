@@ -1,4 +1,5 @@
 // assets/js/maps/republica-mexicana.js
+// Mapa nacional SIARHE (entidades federativas)
 
 // ==============================
 // IMPORTACIONES (según estructura del plugin)
@@ -11,10 +12,15 @@ import {
 } from '../utils/tooltip.js';
 
 import {
-  crearSVGBase, MAP_WIDTH, MAP_HEIGHT,
-  crearLeyenda, descargarComoPNG,
+  crearSVGBase,
+  MAP_WIDTH,
+  MAP_HEIGHT,
+  crearLeyenda,
+  descargarComoPNG,
   construirTitulo,
-  prepararEscalaYLeyenda
+  prepararEscalaYLeyenda,
+  COLOR_CERO,
+  COLOR_SIN,
 } from '../utils/config-mapa.js';
 
 import { renderZoomControles } from '../componentes/zoom-controles.js';
@@ -39,9 +45,6 @@ import {
   isPopulation
 } from '../utils/metricas.js';
 
-import { indicadoresNacionales } from '../utils/window.indicadoresSIARHE.js';
-import { cargarIndicadoresNacionales } from '../utils/cargar-indicadores.js';
-
 // ==============================
 // SVG BASE + TOOLTIP + LEYENDA
 // ==============================
@@ -52,27 +55,22 @@ const legendHost = svg.append("g").attr("id", "legend-host");
 // ==============================
 // CONSTANTES / CONFIG
 // ==============================
-const COLOR_CERO = '#bfbfbf';   // 0.00 (solo para tasas)
-const COLOR_SIN  = '#d9d9d9';   // s/d
 
+// Paletas de respaldo (si no vienen definidas en metricas.js)
 const COLORES_TASAS     = ['#9b2247', 'orange', '#e6d194', 'green', 'darkgreen'];
 const COLORES_POBLACION = ['#e5f5e0', '#a1d99b', '#74c476', '#31a354', '#006d2c'];
-
-const idsEntidades = new Set(
-  Array.from({ length: 32 }, (_, i) => String(i + 1).padStart(2, "0"))
-);
 
 // ==============================
 // ESTADO GLOBAL
 // ==============================
-let currentMetric = METRICAS.TASA_TOTAL;
+// Valor por defecto robusto
+let currentMetric = (METRICAS && METRICAS.TASA_TOTAL) ? METRICAS.TASA_TOTAL : "tasa_total";
 let dataByEstado = {};
 let scale = null;
 let legendCfg = null;
 
 let gMarcadores = svg.append("g").attr("class", "layer-marcadores");
 let marcadoresCtl = null;
-let marcadoresActivos = [];
 
 // ==============================
 // HELPERS MÉTRICAS
@@ -89,19 +87,21 @@ function getPalette(metricKey) {
 // CARGA DE DATOS
 // ==============================
 //
-// ⚠️ IMPORTANTE:
-// desde assets/js/maps → assets/data/... es "../data/..."
-// (con la estructura que me compartiste)
+// Prefijo hacia los datos del plugin. Si algún día cambias la carpeta
+// del plugin, solo habrá que actualizar esta constante.
+const DATA_BASE = "/wp-content/plugins/siarhe/assets/data/";
+
 Promise.all([
-  d3.json("../data/maps/republica-mexicana.geojson"),
-  d3.csv("../data/nacional/republica-mexicana.csv")
+  d3.json(DATA_BASE + "maps/republica-mexicana.geojson"),
+  d3.csv(DATA_BASE + "nacional/republica-mexicana.csv")
 ]).then(([geoData, tasasRaw]) => {
 
-  // Año dinámico solo visual
+  // ==============================
+  // AÑO Y TOTALES
+  // ==============================
   const year = new Date().getFullYear();
   document.querySelectorAll(".year").forEach(el => el.textContent = year);
 
-  // Total nacional (si tu CSV tiene fila 9999 como resumen)
   const fila9999 = tasasRaw.find(d => String(d.id) === "9999");
   const totalNacional = fila9999
     ? (Number(fila9999.enfermeras_total ?? fila9999.enfermeras) || 0)
@@ -109,7 +109,6 @@ Promise.all([
   const spanTotalNac = document.getElementById("total-enfermeras-nac");
   if (spanTotalNac) spanTotalNac.textContent = totalNacional.toLocaleString("es-MX");
 
-  // Número de entidades federativas
   const NUM_ENTIDADES_FED = 32;
   function contarEntidadesFederativas(geo) {
     try {
@@ -131,11 +130,10 @@ Promise.all([
   document.title = `SIARHE | Distribución de Profesionales de Enfermería en México ${year}`;
 
   // ==============================
-  // NORMALIZACIÓN (GLOBAL)
+  // NORMALIZACIÓN
   // ==============================
   const tasas = normalizarDataset(tasasRaw, { scope: "nacional", extras: [] });
 
-  // Diccionario por estado (nombre → fila normalizada)
   dataByEstado = {};
   tasas.forEach(d => {
     const nombre = (d.estado || d.nombre_estado || d.NOMBRE || "").trim();
@@ -204,14 +202,12 @@ Promise.all([
 
   svg.call(zoom);
 
-  const homeUrl = window.SIARHE_HOME_NACIONAL || window.location.href;
-
   renderZoomControles(".zoom-controles", {
     svg,
-    zoom,
-    homeUrl,
-    resetTransform: d3.zoomIdentity
+    g,
+    zoom      // 👈 sin showHome ni homeHref → no aparece el botón Home
   });
+
 
   // ==============================
   // REPINTAR MAPA POR MÉTRICA
@@ -222,9 +218,11 @@ Promise.all([
     const esPobl = esPoblacion(metricKey);
     const palette = getPalette(metricKey);
 
+    // 🔧 Ajuste importante: usar METRICAS + metricKey, no tasaKey aquí
     ({ scale, legendCfg } = prepararEscalaYLeyenda(
       tasas,
-      tasaKey(metricKey),
+      METRICAS,
+      metricKey,
       {
         palette,
         titulo: metricLabel(metricKey),
@@ -251,12 +249,10 @@ Promise.all([
   }
 
   // ==============================
-  // CONTROL DE INDICADOR
+  // CONTROL DE INDICADOR (selector)
   // ==============================
   const indicadorMount = document.getElementById("indicador-control");
   if (indicadorMount) {
-    cargarIndicadoresNacionales(indicadoresNacionales);
-
     import('../componentes/indicador-control.js').then(mod => {
       const { renderIndicadorControl } = mod;
       renderIndicadorControl(indicadorMount, {
@@ -335,7 +331,6 @@ Promise.all([
 
   async function actualizarMarcadores(tiposSeleccionados) {
     limpiarMarcadores();
-    marcadoresActivos = tiposSeleccionados;
 
     if (!tiposSeleccionados.length) {
       if (marcadoresCtl && marcadoresCtl.actualizarLeyenda) {

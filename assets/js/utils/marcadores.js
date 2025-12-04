@@ -2,7 +2,7 @@
 // =======================================================
 // Estilos y helpers para marcadores de clínicas (puntos)
 // =======================================================
-
+import { MAP_HEIGHT } from "./config-mapa.js";
 // Catálogo de tipos (usa estos strings en tus datasets o al pintar)
 export const MARCADORES_TIPOS = {
   CATETER: "CATETER",
