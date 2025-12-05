@@ -68,7 +68,8 @@ let dataByEstado = {};
 let scale = null;
 let legendCfg = null;
 
-let gMarcadores = svg.append("g").attr("class", "layer-marcadores");
+// IMPORTANTE: los marcadores viven dentro de `g` para seguir zoom/pan
+let gMarcadores = g.append("g").attr("class", "layer-marcadores");
 
 // ==============================
 // HELPERS MÉTRICAS
@@ -166,6 +167,9 @@ Promise.all([
       .attr("stroke-width", 0.5)
       .attr("fill", COLOR_SIN);
 
+    // Asegurar que los marcadores queden por ENCIMA de los estados
+    gMarcadores.raise();
+
     // ==============================
     // TOOLTIP ENTIDADES
     // ==============================
@@ -204,10 +208,7 @@ Promise.all([
       .scaleExtent([1, 8])
       .on("zoom", (event) => {
         g.attr("transform", event.transform);
-        // Cuando haya marcadores, se reescala el radio
-        if (gMarcadores && gMarcadores.updateZoom) {
-          gMarcadores.updateZoom(event.transform.k);
-        }
+        // si en el futuro queremos reescalar el radio, podemos usar event.transform.k
       });
 
     svg.call(zoom);
@@ -250,7 +251,7 @@ Promise.all([
         });
 
       legendHost.selectAll("*").remove();
-      crearLeyenda(legendHost, legendCfg);
+      crearLeyenda(legendCfg ? legendHost : svg, legendCfg);
     }
 
     // ==============================
@@ -300,7 +301,7 @@ Promise.all([
 
     // ==============================
     // MARCADORES (CLÍNICAS, ETC.)
-// ==============================
+    // ==============================
     async function cargarYPintarTipo(tipo) {
       const ruta = RUTAS_MARCADORES[tipo];
       if (!ruta) return null;
