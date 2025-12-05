@@ -1,3 +1,4 @@
+// assets/js/utils/marcadores.js
 // =======================================================
 // Estilos y helpers para marcadores de clínicas (puntos)
 // =======================================================
@@ -53,31 +54,45 @@ export function pintarMarcadores(
 ) {
   if (!g || !projection || !Array.isArray(puntos)) {
     console.warn("[marcadores] Parámetros inválidos.");
-    return { selection: null, updateZoom() {}, recolor() {} };
+    return { selection: null, updateZoom() {}, recolor() {}, layer: null };
   }
 
   let kActual = 1;
+  let tipoActual = tipo;
 
-  const estilo = () => estiloPorTipo(tipo);
+  const layer = g
+    .append("g")
+    .attr("class", `capa-clinicas capa-${String(tipoActual).toLowerCase()}`);
 
-  const radioEscalado = el =>
-    (radioBase * (el.classList.contains("is-hover") ? 1.35 : 1)) / kActual;
+  const estilo = () => estiloPorTipo(tipoActual);
 
-  const bordeEscalado = el =>
-    (strokeBase * (el.classList.contains("is-hover") ? 1.35 : 1)) / kActual;
+  const radioEscalado = (el) => {
+    const isHover = el && el.classList && el.classList.contains("is-hover");
+    const factorHover = isHover ? 1.35 : 1;
+    return (radioBase * factorHover) / kActual;
+  };
 
-  const sel = g.append("g")
-    .attr("class", "capa-clinicas")
+  const bordeEscalado = (el) => {
+    const isHover = el && el.classList && el.classList.contains("is-hover");
+    const factorHover = isHover ? 1.35 : 1;
+    return (strokeBase * factorHover) / kActual;
+  };
+
+  const sel = layer
     .selectAll("circle")
     .data(puntos)
     .enter()
     .append("circle")
-    .attr("cx", d => projection([d.lon, d.lat])[0])
-    .attr("cy", d => projection([d.lon, d.lat])[1])
-    .attr("r", function () { return radioEscalado(this); })
+    .attr("cx", (d) => projection([d.lon, d.lat])[0])
+    .attr("cy", (d) => projection([d.lon, d.lat])[1])
+    .attr("r", function () {
+      return radioEscalado(this);
+    })
     .attr("fill", estilo().fill)
     .attr("stroke", estilo().stroke)
-    .attr("stroke-width", function () { return bordeEscalado(this); })
+    .attr("stroke-width", function () {
+      return bordeEscalado(this);
+    })
     .style("cursor", "pointer")
     .on("mouseover", function () {
       this.classList.add("is-hover");
@@ -94,42 +109,55 @@ export function pintarMarcadores(
         .attr("stroke-width", () => bordeEscalado(this));
     });
 
-  // Zoom dinámico
+  // Zoom dinámico: se llama desde el manejador de zoom del mapa
   function updateZoom(k) {
-    kActual = k;
+    kActual = k || 1;
     sel
-      .attr("r", function () { return radioEscalado(this); })
-      .attr("stroke-width", function () { return bordeEscalado(this); });
+      .attr("r", function () {
+        return radioEscalado(this);
+      })
+      .attr("stroke-width", function () {
+        return bordeEscalado(this);
+      });
   }
 
   // Recolorear si el usuario activa más tipos
   function recolor(nuevoTipo) {
-    tipo = nuevoTipo;
-    sel
-      .attr("fill", estilo().fill)
-      .attr("stroke", estilo().stroke);
+    if (!nuevoTipo) return;
+    tipoActual = nuevoTipo;
+    sel.attr("fill", estilo().fill).attr("stroke", estilo().stroke);
   }
 
-  return { selection: sel, updateZoom, recolor };
+  return { selection: sel, updateZoom, recolor, layer };
 }
 
 // =======================================================
 // LEYENDA
 // =======================================================
-export function crearLeyendaMarcadores(host, tiposPresentes, {
-  x = 20,
-  y = MAP_HEIGHT - 100,
-  title = "Marcadores",
-  dx = 0,
-  dyStep = 18,
-} = {}) {
-  const sel = (host && typeof host.select === "function")
-    ? host
-    : d3.select(host || "svg");
+export function crearLeyendaMarcadores(
+  host,
+  tiposPresentes,
+  {
+    x = 20,
+    y = MAP_HEIGHT - 100,
+    title = "Marcadores",
+    dx = 0,
+    dyStep = 18,
+  } = {}
+) {
+  const hostSel =
+    host && typeof host.select === "function" ? host : d3.select(host || "svg");
 
-  sel.selectAll(".leyenda-marcadores").remove();
+  // Limpiamos leyenda anterior
+  hostSel.selectAll(".leyenda-marcadores").remove();
 
-  const g = sel.append("g")
+  // Si no hay tipos, no dibujamos nada (para que desaparezca la palabra "Marcadores")
+  if (!tiposPresentes || !tiposPresentes.length) {
+    return null;
+  }
+
+  const g = hostSel
+    .append("g")
     .attr("class", "leyenda-marcadores")
     .attr("transform", `translate(${x},${y})`);
 
@@ -147,7 +175,8 @@ export function crearLeyendaMarcadores(host, tiposPresentes, {
     const est = estiloPorTipo(tipo);
     const nombre = MARCADOR_NOMBRES[tipo] || tipo;
 
-    const gy = g.append("g")
+    const gy = g
+      .append("g")
       .attr("transform", `translate(${dx},${baseY + i * dyStep})`);
 
     gy.append("circle")
@@ -157,17 +186,14 @@ export function crearLeyendaMarcadores(host, tiposPresentes, {
       .attr("fill", est.fill)
       .attr("stroke", est.stroke);
 
-    gy.append("text")
-      .attr("x", 12)
-      .attr("y", 0)
-      .text(nombre);
+    gy.append("text").attr("x", 12).attr("y", 0).text(nombre);
   });
 
   return g;
 }
 
 // =======================================================
-// EXPORT para usarlo en otros módulos
+// Nombre amigable
 // =======================================================
 export function nombreTipoMarcador(tipo) {
   return MARCADOR_NOMBRES[tipo] || tipo;
