@@ -29,7 +29,10 @@ import { normalizarDataset } from "../utils/normalizacion.js";
 import { urlEntidad } from "../utils/enlaces.js";
 
 import { renderMarcadoresControl } from "../componentes/marcadores-control.js";
-import { RUTAS_MARCADORES, normalizarClinicaRow } from "../utils/marcadores.config.js";
+import {
+  RUTAS_MARCADORES,
+  normalizarClinicaRow,
+} from "../utils/marcadores.config.js";
 import {
   MARCADORES_TIPOS,
   pintarMarcadores,
@@ -58,7 +61,6 @@ const legendHost = svg.append("g").attr("id", "legend-host");
 // ==============================
 // CONSTANTES / CONFIG
 // ==============================
-
 const COLORES_TASAS = ["#9b2247", "orange", "#e6d194", "green", "darkgreen"];
 const COLORES_POBLACION = ["#e5f5e0", "#a1d99b", "#74c476", "#31a354", "#006d2c"];
 
@@ -68,8 +70,10 @@ let dataByEstado = {};
 let scale = null;
 let legendCfg = null;
 
-// IMPORTANTE: los marcadores viven dentro de `g` para seguir zoom/pan
+// Marcadores dentro de `g` para seguir zoom/pan
 let gMarcadores = g.append("g").attr("class", "layer-marcadores");
+// Controladores activos de marcadores (para el zoom)
+let marcadoresActivos = [];
 
 // ==============================
 // HELPERS MÉTRICAS
@@ -80,7 +84,6 @@ function esPoblacion(metricKey) {
 
 function getPalette(metricKey) {
   const pal = metricPalette(metricKey);
-
   if (Array.isArray(pal)) return pal;
   if (pal === "poblacion") return COLORES_POBLACION;
   return COLORES_TASAS;
@@ -89,7 +92,6 @@ function getPalette(metricKey) {
 // ==============================
 // CARGA DE DATOS
 // ==============================
-
 const DATA_BASE = "/wp-content/plugins/siarhe/assets/data/";
 
 Promise.all([
@@ -208,16 +210,23 @@ Promise.all([
       .scaleExtent([1, 8])
       .on("zoom", (event) => {
         g.attr("transform", event.transform);
-        // si en el futuro queremos reescalar el radio, podemos usar event.transform.k
+
+        // Escalamos marcadores según el nivel de zoom
+        const k = event.transform.k;
+        marcadoresActivos.forEach((ctl) => {
+          if (ctl && typeof ctl.updateZoom === "function") {
+            ctl.updateZoom(k);
+          }
+        });
       });
 
+    // Vincular zoom al SVG y a los botones
     svg.call(zoom);
-
-    renderZoomControles(".zoom-controles", {
+    renderZoomControles("#mapa-nacional", {
       svg,
       g,
       zoom,
-      // en nacional no mostramos botón Home
+      showHome: false,
     });
 
     // ==============================
@@ -229,13 +238,18 @@ Promise.all([
       const esPobl = esPoblacion(metricKey);
       const palette = getPalette(metricKey);
 
-      ({ scale, legendCfg } = prepararEscalaYLeyenda(tasas, METRICAS, metricKey, {
-        palette,
-        titulo: metricLabel(metricKey),
-        idKey: "id",
-        excludeIds: ["8888", "9999"],
-        clamp: true,
-      }));
+      ({ scale, legendCfg } = prepararEscalaYLeyenda(
+        tasas,
+        METRICAS,
+        metricKey,
+        {
+          palette,
+          titulo: metricLabel(metricKey),
+          idKey: "id",
+          excludeIds: ["8888", "9999"],
+          clamp: true,
+        }
+      ));
 
       g.selectAll("path.estado")
         .transition()
@@ -309,47 +323,53 @@ Promise.all([
       const raw = await d3.csv(ruta);
       const puntos = raw
         .map((d) => normalizarClinicaRow(d, tipo))
-        .filter(
-          (d) => Number.isFinite(d.lat) && Number.isFinite(d.lon)
-        );
+        .filter((d) => Number.isFinite(d.lat) && Number.isFinite(d.lon));
 
       const ctl = pintarMarcadores(gMarcadores, puntos, projection, { tipo });
 
-      ctl.selection
-        .on("mouseover", function (event, d) {
-          event.stopPropagation();
-          mostrarTooltipClinica(tooltip, event, d);
-        })
-        .on("mousemove", function (event) {
-          event.stopPropagation();
-          tooltip
-            .style("left", event.pageX + 10 + "px")
-            .style("top", event.pageY - 28 + "px");
-        })
-        .on("mouseout", function (event) {
-          event.stopPropagation();
-          ocultarTooltip(tooltip);
-        });
+      if (ctl && ctl.selection) {
+        ctl.selection
+          .on("mouseover", function (event, d) {
+            event.stopPropagation();
+            mostrarTooltipClinica(tooltip, event, d);
+          })
+          .on("mousemove", function (event) {
+            event.stopPropagation();
+            tooltip
+              .style("left", event.pageX + 10 + "px")
+              .style("top", event.pageY - 28 + "px");
+          })
+          .on("mouseout", function (event) {
+            event.stopPropagation();
+            ocultarTooltip(tooltip);
+          });
+      }
 
       return ctl;
     }
 
     function limpiarMarcadores() {
       gMarcadores.selectAll("*").remove();
+      marcadoresActivos = [];
+      // También limpiamos la leyenda
+      crearLeyendaMarcadores(svg, []);
     }
 
     async function actualizarMarcadores(tiposSeleccionados) {
       limpiarMarcadores();
 
-      // Actualizamos leyenda de marcadores (dentro del SVG principal)
-      crearLeyendaMarcadores(svg, tiposSeleccionados);
-
       if (!tiposSeleccionados.length) {
         return;
       }
 
+      // Leyenda con los tipos seleccionados
+      crearLeyendaMarcadores(svg, tiposSeleccionados);
+
       for (const tipo of tiposSeleccionados) {
-        await cargarYPintarTipo(tipo);
+        const ctl = await cargarYPintarTipo(tipo);
+        if (ctl) {
+          marcadoresActivos.push(ctl);
+        }
       }
     }
 
@@ -375,7 +395,6 @@ Promise.all([
         placeholder: "Selecciona uno o varios marcadores.",
       });
 
-      // Cuando cambie la selección, pintamos/limpiamos marcadores
       ctl.onChange((tiposSeleccionados) => {
         actualizarMarcadores(tiposSeleccionados);
       });

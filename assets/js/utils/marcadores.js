@@ -2,9 +2,12 @@
 // =======================================================
 // Estilos y helpers para marcadores de clínicas (puntos)
 // =======================================================
+
 import { MAP_HEIGHT } from "./config-mapa.js";
 
+// -------------------------------------
 // Catálogo de tipos
+// -------------------------------------
 export const MARCADORES_TIPOS = {
   CATETER: "CATETER",
   HERIDAS: "HERIDAS",
@@ -54,31 +57,22 @@ export function pintarMarcadores(
 ) {
   if (!g || !projection || !Array.isArray(puntos)) {
     console.warn("[marcadores] Parámetros inválidos.");
-    return { selection: null, updateZoom() {}, recolor() {}, layer: null };
+    return { selection: null, updateZoom() {}, recolor() {} };
   }
 
-  let kActual = 1;
-  let tipoActual = tipo;
+  let kActual = 1; // nivel de zoom actual
 
-  const layer = g
+  const estilo = () => estiloPorTipo(tipo);
+
+  const radioEscalado = (el) =>
+    (radioBase * (el.classList.contains("is-hover") ? 1.35 : 1)) / kActual;
+
+  const bordeEscalado = (el) =>
+    (strokeBase * (el.classList.contains("is-hover") ? 1.35 : 1)) / kActual;
+
+  const sel = g
     .append("g")
-    .attr("class", `capa-clinicas capa-${String(tipoActual).toLowerCase()}`);
-
-  const estilo = () => estiloPorTipo(tipoActual);
-
-  const radioEscalado = (el) => {
-    const isHover = el && el.classList && el.classList.contains("is-hover");
-    const factorHover = isHover ? 1.35 : 1;
-    return (radioBase * factorHover) / kActual;
-  };
-
-  const bordeEscalado = (el) => {
-    const isHover = el && el.classList && el.classList.contains("is-hover");
-    const factorHover = isHover ? 1.35 : 1;
-    return (strokeBase * factorHover) / kActual;
-  };
-
-  const sel = layer
+    .attr("class", "capa-clinicas")
     .selectAll("circle")
     .data(puntos)
     .enter()
@@ -109,9 +103,9 @@ export function pintarMarcadores(
         .attr("stroke-width", () => bordeEscalado(this));
     });
 
-  // Zoom dinámico: se llama desde el manejador de zoom del mapa
+  // --- Zoom dinámico: ajusta radio y borde según k ---
   function updateZoom(k) {
-    kActual = k || 1;
+    kActual = k;
     sel
       .attr("r", function () {
         return radioEscalado(this);
@@ -123,12 +117,11 @@ export function pintarMarcadores(
 
   // Recolorear si el usuario activa más tipos
   function recolor(nuevoTipo) {
-    if (!nuevoTipo) return;
-    tipoActual = nuevoTipo;
+    tipo = nuevoTipo;
     sel.attr("fill", estilo().fill).attr("stroke", estilo().stroke);
   }
 
-  return { selection: sel, updateZoom, recolor, layer };
+  return { selection: sel, updateZoom, recolor };
 }
 
 // =======================================================
@@ -145,18 +138,20 @@ export function crearLeyendaMarcadores(
     dyStep = 18,
   } = {}
 ) {
-  const hostSel =
-    host && typeof host.select === "function" ? host : d3.select(host || "svg");
+  const sel =
+    host && typeof host.select === "function"
+      ? host
+      : d3.select(host || "svg");
 
-  // Limpiamos leyenda anterior
-  hostSel.selectAll(".leyenda-marcadores").remove();
+  // Siempre limpiamos cualquier leyenda previa
+  sel.selectAll(".leyenda-marcadores").remove();
 
-  // Si no hay tipos, no dibujamos nada (para que desaparezca la palabra "Marcadores")
-  if (!tiposPresentes || !tiposPresentes.length) {
+  // Si no hay tipos seleccionados, no dibujamos nada
+  if (!tiposPresentes || tiposPresentes.length === 0) {
     return null;
   }
 
-  const g = hostSel
+  const g = sel
     .append("g")
     .attr("class", "leyenda-marcadores")
     .attr("transform", `translate(${x},${y})`);
@@ -193,7 +188,7 @@ export function crearLeyendaMarcadores(
 }
 
 // =======================================================
-// Nombre amigable
+// Nombre legible por tipo
 // =======================================================
 export function nombreTipoMarcador(tipo) {
   return MARCADOR_NOMBRES[tipo] || tipo;
